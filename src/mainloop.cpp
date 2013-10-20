@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <string>
 #include <sstream>
+#include <utility>
 #include <iomanip>
 #include <mpi.h>
 #include "OpenMM.h"
@@ -19,7 +20,7 @@
 
  int main(int argc, char* argv[]) {
      MPI::Init(argc, argv);
-     int n_proc = MPI::COMM_WORLD.Get_size();
+     int size = MPI::COMM_WORLD.Get_size();
      int rank = MPI::COMM_WORLD.Get_rank();
 
      // Parse the command line
@@ -59,14 +60,22 @@
 	 file.write(context->getState(OpenMM::State::Positions, isPeriodic));
        }
        file.flush();
-       MPI::COMM_WORLD.Barrier();
+
 
        ParallelKCenters clusterer(file, 1);
-    }
+       std::pair<int, int>pair (0, 0);
 
-
-      
-
+       std::vector<float> distance = clusterer.getRmsdsTo(pair);
+       MPI::COMM_WORLD.Barrier();
+       for (int i = 0; i < size; i++) {
+	 MPI::COMM_WORLD.Barrier();
+	 if (i == rank) {
+	   printf("\n");
+	   for (int j = 0; j < distance.size(); j++)
+	     printf("RANK %d:: distance[%d] = %f\n", rank, j, distance[j]);
+	 }
+       }
+     }
 
     delete context;
     MPI::Finalize();

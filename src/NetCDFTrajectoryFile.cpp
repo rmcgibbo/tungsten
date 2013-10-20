@@ -105,13 +105,16 @@ void NetCDFTrajectoryFile::readPositions(int stride, float* out) const {
   int numTotalFrames = handle->get_dim("frame")->size();
   int numFrames = (numTotalFrames+stride-1)/stride;
   int numAtoms = handle->get_dim("atom")->size();
+  int numPaddedAtoms = ((numAtoms + 3) / 4) * 4;
 
   NcVar* coord = handle->get_var("coordinates");
   int ii = 0;
-  for (int i = 0; i < numTotalFrames; i += stride) {
+  for (int i = 0; i < numTotalFrames; i += stride, ii++) {
+    float* frame = out+(ii)*numPaddedAtoms*3;
     coord->set_cur(i, 0, 0);
-    coord->get(out+i*numAtoms*3, 1, numAtoms, 3);
-    i++;
+    coord->get(frame, 1, numAtoms, 3);
+    for (int j = 0; j < numAtoms*3; j++)
+      frame[j] /= 10;
   }
 
   printf("RETURNING FROM READ POSITIONS: rank=%d\n", rank);

@@ -1,33 +1,31 @@
-CC = mpic++
+CPP = mpic++
 NETCDF_DIR = /usr
 OPENMM_LINKS = -L$(OPENMM_LIB_PATH) -lOpenMM -lOpenMMSerialization
 NETCDF_LINKS = -L$(NETCDF_DIR)/lib -lnetcdf_c++
 
-run: accelerator system.xml integrator.xml state.xml config.ini
-	mpirun -np 2 ./accelerator system.xml integrator.xml state.xml config.ini
+INCLUDE = -Iinclude -Iinclude/rmsd -I$(OPENMM_INCLUDE_PATH) -I$(NETCDF_DIR)/include
+CPP_FLAGS = $(INCLUDE)
+CC_FLAGS = $(INCLUDE) -msse2 -mssse3 -O3
+LD_FLAGS = $(OPENMM_LINKS) $(NETCDF_LINKS)
 
-accelerator: build/mainloop.o build/INIReader.o build/ini.o build/NetCDFTrajectoryFile.o build/ParallelKCenters.o build/utilities.o
-	$(CC) -o accelerator build/mainloop.o build/INIReader.o build/ini.o build/NetCDFTrajectoryFile.o build/ParallelKCenters.o build/utilities.o $(OPENMM_LINKS) $(NETCDF_LINKS)
-
-build/mainloop.o: src/mainloop.cpp
-	$(CC) -o $@ -c $< -Iinclude -I$(OPENMM_INCLUDE_PATH)
-
-build/ini.o: src/ini.c
-	$(CC) -o $@ -c $< -Iinclude
-
-build/INIReader.o: src/INIReader.cpp
-	$(CC) -o $@ -c $< -Iinclude
-
-build/NetCDFTrajectoryFile.o: src/NetCDFTrajectoryFile.cpp
-	$(CC) -o $@ -c $< -Iinclude -I$(NETCDF_DIR)/include -I$(OPENMM_INCLUDE_PATH)
-
-build/ParallelKCenters.o: src/ParallelKCenters.cpp
-	$(CC) -o $@ -c $< -Iinclude -I$(OPENMM_INCLUDE_PATH)
+CPP_FILES := $(wildcard src/*.cpp)
+C_FILES := $(wildcard src/*.c) $(wildcard src/*/*.c)
+CPP_OBJ_FILES = $(patsubst src/%.cpp,obj/%.o,$(CPP_FILES))
+C_OBJ_FILES = $(patsubst src/%.c,obj/%.o,$(C_FILES))
 
 
-build/utilities.o: src/utilities.cpp
-	$(CC) -o $@ -c $< -Iinclude -I$(OPENMM_INCLUDE_PATH)
+accelerator: $(CPP_OBJ_FILES) $(C_OBJ_FILES)
+	$(CPP)  -o $@ $^ $(LD_FLAGS)
 
+obj/%.o: src/%.cpp
+	$(CPP) $(CPP_FLAGS) -c -o $@ $<
+
+obj/%.o: src/%.c
+	@mkdir -p $(@D)
+	$(CPP) $(CC_FLAGS) -c -o $@ $<
 
 clean:
-	rm -rf build/* accelerator trj-*
+	rm -rf obj/* accelerator trj-*
+
+run: accelerator
+	mpirun -np 2 ./accelerator data/system.xml data/integrator.xml data/state.xml data/config.ini

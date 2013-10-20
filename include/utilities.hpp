@@ -23,19 +23,31 @@
   */
 OpenMM::Context* createContext(std::ifstream& systemXml, std::ifstream& integratorXml, const std::string& platformName);
 
- /**
-  * Convenience method to exit from MPI
-  */
- void exitWithMessage(const char* message);
+/**
+ * Convenience method to exit from MPI
+ */
+void exitWithMessage(const char* message);
 
- /**
-  * Parse the config file
-  */ 
- void parseConfigFile(const char* configFileName, ConfigOpts* out);
+/**
+ * Parse the config file
+ */ 
+void parseConfigFile(const char* configFileName, ConfigOpts* out);
 
- /**
-  * Does an OpenMM System contain periodic boundary conditions?
-  */
- bool hasPeriodicBoundaries(const OpenMM::System& system);
+/**
+ * Does an OpenMM System contain periodic boundary conditions?
+ */
+bool hasPeriodicBoundaries(const OpenMM::System& system);
+
+
+/**
+ * Log the uname to stdout
+ */
+void printUname(void);
+
+/**
+ * 
+ */
+void resetRandomNumberSeed(OpenMM::Integrator* integrator);
 
 #endif
+

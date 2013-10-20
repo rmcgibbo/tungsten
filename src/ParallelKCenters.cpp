@@ -2,8 +2,10 @@
 #include <cmath>
 #include <cstdlib>
 #include <vector>
+#include <limits>
 #include <utility>
 #include <mpi.h>
+#include <omp.h>
 
 #include "utilities.hpp"
 #include "NetCDFTrajectoryFile.hpp"
@@ -28,23 +30,6 @@ ParallelKCenters::ParallelKCenters(const NetCDFTrajectoryFile& ncTraj, int strid
   ncTraj.readPositions(1, coordinates);
   center();
   computeTraces();
-
-  if (rank == 0) {
-    for (int i = 0; i < numFrames; i++)
-      printf("g[%d]=%f\n", i, traces[i]);
-
-    printf("coordinates[0,0]=%f %f %f\n",
-	   coordinates[0],
-	   coordinates[1],
-	   coordinates[2]);
-    printf("coordinates[1,0]=%f %f %f\n",
-	   coordinates[numPaddedAtoms*3 + 0],
-	   coordinates[numPaddedAtoms*3 + 1],
-	   coordinates[numPaddedAtoms*3 + 2]);
-    
-
-  }
-
 }
 
 
@@ -75,7 +60,60 @@ void ParallelKCenters::computeTraces() {
   }
 }
 
-std::vector<float> ParallelKCenters::getRmsdsTo(std::pair<int, int> &ref) {
+std::pair<std::pair<int, size_t>, float> ParallelKCenters::collectFarthestFrom(std::pair<int, size_t> &ref) {
+  static const int size = MPI::COMM_WORLD.Get_size();
+  static const int rank = MPI::COMM_WORLD.Get_rank();
+  float* rootRmsds;
+  int* rootFarthestFrame;
+  float maxRmsd = 0;
+  int farthestNode;
+  size_t farthestFrame = -1;
+
+  std::vector<float> rmsds = getRmsdsFrom(ref);
+
+  // Compute the farthest point from the ref on each MPI rank
+  for (size_t i = 0; i < rmsds.size(); i++)
+    if (rmsds[i] > maxRmsd) {
+      maxRmsd = rmsds[i];
+      farthestFrame = i;
+    }
+
+  if (rank == MASTER) {
+    int err1 = posix_memalign((void**) &rootRmsds, 16, size*sizeof(float));
+    int err2 = posix_memalign((void**) &rootFarthestFrame, 16, size*sizeof(int));
+    if (err1 != 0 || err2 != 0) exitWithMessage("Malloc error");
+  }
+
+  // Gather the best points on each node on the root.
+  MPI::COMM_WORLD.Gather(&maxRmsd, 1, MPI_FLOAT, rootRmsds, size, MPI_FLOAT, MASTER);
+  MPI::COMM_WORLD.Gather(&farthestFrame, 1, MPI_INT, rootFarthestFrame, size, MPI_INT, MASTER);
+
+  maxRmsd = 0;
+  if (rank == MASTER)
+    // Compute which node had the farthest away point
+    for (size_t i = 0; i < size; i++)
+      if (rootRmsds[i] > maxRmsd) {
+	maxRmsd = rootRmsds[i];
+	farthestNode = i;
+	farthestFrame = rootFarthestFrame[i];
+      }
+
+  // Broacast the result to all of the nodes
+  MPI::COMM_WORLD.Bcast(&farthestNode, 1, MPI_FLOAT, MASTER);
+  MPI::COMM_WORLD.Bcast(&farthestFrame, 1, MPI_FLOAT, MASTER);
+
+  std::pair<int, size_t> farthest(farthestNode, farthestFrame);
+  std::pair<std::pair<int, size_t>, float> triplet(farthest, maxRmsd);
+
+  if (rank == MASTER) {
+    free(rootRmsds);
+    free(rootFarthestFrame);
+  }
+
+  return triplet;
+}
+
+std::vector<float> ParallelKCenters::getRmsdsFrom(std::pair<int, size_t> &ref) {
   int rank = MPI::COMM_WORLD.Get_rank();
   int size = MPI::COMM_WORLD.Get_size();
   int err = 0;
@@ -96,11 +134,11 @@ std::vector<float> ParallelKCenters::getRmsdsTo(std::pair<int, int> &ref) {
   MPI::COMM_WORLD.Bcast(frame, numPaddedAtoms*3, MPI_FLOAT, ref.first);
   MPI::COMM_WORLD.Bcast(&g, 1, MPI_FLOAT, ref.first);
 
-
+  #pragma omp for
   for (size_t i = 0; i < numFrames; i++)
       result[i] = sqrtf(msd_atom_major(numAtoms, numPaddedAtoms, frame, &coordinates[i*numPaddedAtoms*3], g, traces[i]));
   
   if (rank != ref.first)
-    //free(frame);
+    free(frame);
   return result;
-  }
+}

@@ -12,7 +12,8 @@ public:
   ~ParallelKCenters() {
     free(coordinates);
   }
-  std::vector<float> getRmsdsTo(std::pair<int, int> &ref);
+  std::vector<float> getRmsdsFrom(std::pair<int, size_t> &ref);
+  std::pair<std::pair<int, size_t>, float> collectFarthestFrom(std::pair<int, size_t> &ref);
 
  private:
   void center();

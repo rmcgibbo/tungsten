@@ -1,4 +1,6 @@
 #include <cstdlib>
+#include <ctime>
+#include <sys/utsname.h>
 #include <mpi.h>
 #include "openmm/serialization/XmlSerializer.h"
 #include "utilities.hpp"
@@ -12,12 +14,12 @@ OpenMM::Context* createContext(std::ifstream& systemXml, std::ifstream& integrat
 
   OpenMM::System* system = OpenMM::XmlSerializer::deserialize<OpenMM::System>(systemXml);
   OpenMM::Integrator* integrator = OpenMM::XmlSerializer::deserialize<OpenMM::Integrator>(integratorXml);
+  resetRandomNumberSeed(integrator);
   OpenMM::Platform* platform = &OpenMM::Platform::getPlatformByName(platformName);
-
-
   OpenMM::Context* context = new OpenMM::Context(*system, *integrator, *platform);
+
   if (rank == MASTER) {
-    printf("Context created on OpenMM platform: %s\n", (*context).getPlatform().getName().c_str());
+    printf("\nContext created on OpenMM platform: %s\n", (*context).getPlatform().getName().c_str());
     std::vector<std::string> names = (*context).getPlatform().getPropertyNames();
     for (int i = 0; i < names.size(); i++) {
       std::string value = (*context).getPlatform().getPropertyValue(*context, names[i]);
@@ -84,4 +86,35 @@ bool hasPeriodicBoundaries(const OpenMM::System& system) {
     }
   }
   return isPeriodic;
+}
+
+
+void printUname(void) {
+  static const int rank = MPI::COMM_WORLD.Get_rank();
+  static const int size = MPI::COMM_WORLD.Get_size();
+  struct utsname sysinfo;
+  uname(&sysinfo);
+  
+  for (int i = 0; i < size; i++) {
+    MPI::COMM_WORLD.Barrier();
+    if (i == rank) {
+      printf("Rank %d Information\n", rank);
+      printf("  System: %s %s %s\n", sysinfo.sysname, sysinfo.release, sysinfo.machine);
+      printf("  Host Name: %s\n", sysinfo.nodename);
+      printf("  OMP_NUM_THREADS: %s\n", getenv("OMP_NUM_THREADS"));
+      printf("  OpenMM Version: %s\n", OpenMM::Platform::getOpenMMVersion().c_str());
+    }
+  }
+}
+
+
+void resetRandomNumberSeed(OpenMM::Integrator* integrator) {
+  srand(time(NULL));
+  int seed = rand() % 4294967296;
+
+  OpenMM::LangevinIntegrator* lIntegrator  = dynamic_cast<OpenMM::LangevinIntegrator*>(integrator);
+  if (lIntegrator != NULL) {
+    printf("LangevinIntegrator\n");
+    lIntegrator->setRandomNumberSeed(seed);
+  }
 }

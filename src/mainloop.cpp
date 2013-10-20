@@ -20,8 +20,8 @@
 
  int main(int argc, char* argv[]) {
      MPI::Init(argc, argv);
-     int size = MPI::COMM_WORLD.Get_size();
-     int rank = MPI::COMM_WORLD.Get_rank();
+     static const int size = MPI::COMM_WORLD.Get_size();
+     static const int rank = MPI::COMM_WORLD.Get_rank();
 
      // Parse the command line
      if (argc != 5) {
@@ -29,6 +29,7 @@
 	 exitWithMessage("");
      }
 
+     printUname();
      // Create the context from the input files
      std::ifstream systemXml(argv[1]);
      std::ifstream integratorXml(argv[2]);
@@ -63,9 +64,9 @@
 
 
        ParallelKCenters clusterer(file, 1);
-       std::pair<int, int>pair (0, 0);
+       std::pair<int, size_t>pair (0, 0);
 
-       std::vector<float> distance = clusterer.getRmsdsTo(pair);
+       std::vector<float> distance = clusterer.getRmsdsFrom(pair);
        MPI::COMM_WORLD.Barrier();
        for (int i = 0; i < size; i++) {
 	 MPI::COMM_WORLD.Barrier();
@@ -74,6 +75,11 @@
 	   for (int j = 0; j < distance.size(); j++)
 	     printf("RANK %d:: distance[%d] = %f\n", rank, j, distance[j]);
 	 }
+       }
+       std::pair<std::pair<int, size_t>, float> t = clusterer.collectFarthestFrom(pair);
+       if (rank == MASTER) {
+	 printf("Furthest Point\n");
+	 printf("%d-%d: %f\n", t.first.first, t.first.second, t.second);
        }
      }
 

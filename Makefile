@@ -22,4 +22,4 @@ build/netcdfwriter.o: src/netcdfwriter.cpp
 	$(CC) -o $@ -c $< -Iinclude -I$(NETCDF_DIR)/include
 
 clean:
-	rm build/* accelerator
+	rm -f build/* accelerator

@@ -1,25 +1,29 @@
 CC = mpic++
-NETCDF_DIR = /Users/rmcgibbo/anaconda/pkgs/libnetcdf-4.2.1.1-1
+NETCDF_DIR = /usr
 OPENMM_LINKS = -L$(OPENMM_LIB_PATH) -lOpenMM -lOpenMMSerialization
-NETCDF_LINKS = -L$(NETCDF_DIR)/lib -lnetcdf 
+NETCDF_LINKS = -L$(NETCDF_DIR)/lib -lnetcdf_c++
 
 run: accelerator system.xml integrator.xml state.xml config.ini
 	mpirun -np 2 ./accelerator system.xml integrator.xml state.xml config.ini
 
-accelerator: build/mainloop.o build/inireader.o build/ini.o build/netcdfwriter.o
-	$(CC) -o accelerator build/mainloop.o build/inireader.o build/ini.o $(OPENMM_LINKS) $(NETCDF_LINKS)
+accelerator: build/mainloop.o build/INIReader.o build/ini.o build/NetCDFTrajectoryFile.o build/ParallelKCenters.o
+	$(CC) -o accelerator build/mainloop.o build/INIReader.o build/ini.o build/NetCDFTrajectoryFile.o build/ParallelKCenters.o $(OPENMM_LINKS) $(NETCDF_LINKS)
 
 build/mainloop.o: src/mainloop.cpp
-	$(CC) -o $@ -c $< -Iinclude -I$(OPENMM_INCLUDE_PATH) -Iinclude
+	$(CC) -o $@ -c $< -Iinclude -I$(OPENMM_INCLUDE_PATH)
 
 build/ini.o: src/ini.c
 	$(CC) -o $@ -c $< -Iinclude
 
-build/inireader.o: src/INIReader.cpp
+build/INIReader.o: src/INIReader.cpp
 	$(CC) -o $@ -c $< -Iinclude
 
-build/netcdfwriter.o: src/netcdfwriter.cpp
-	$(CC) -o $@ -c $< -Iinclude -I$(NETCDF_DIR)/include
+build/NetCDFTrajectoryFile.o: src/NetCDFTrajectoryFile.cpp
+	$(CC) -o $@ -c $< -Iinclude -I$(NETCDF_DIR)/include -I$(OPENMM_INCLUDE_PATH)
+
+build/ParallelKCenters.o: src/ParallelKCenters.cpp
+	$(CC) -o $@ -c $< -Iinclude -I$(OPENMM_INCLUDE_PATH)
+
 
 clean:
-	rm -f build/* accelerator
+	rm -rf build/* accelerator trj-*

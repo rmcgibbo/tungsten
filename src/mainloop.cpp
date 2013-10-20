@@ -1,9 +1,11 @@
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <sstream>
 #include <iomanip>
 #include <mpi.h>
 #include "OpenMM.h"
+#include "openmm/serialization/XmlSerializer.h"
 
 #include "utilities.hpp"
 #include "NetCDFTrajectoryFile.hpp"
@@ -23,10 +25,7 @@
      // Parse the command line
      if (argc != 5) {
 	 fprintf(stderr, "usage: %s <system.xml> <integrator.xml> <state.xml> <config.ini>\n", argv[0]);
-	 if (rank == MASTER)
-	     fprintf(stderr, "n_rounds must be given and greater than 0\n");
-	 MPI::Finalize();
-	 exit(EXIT_FAILURE);
+	 exitWithMessage("");
      }
 
      // Create the context from the input files

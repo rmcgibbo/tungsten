@@ -10,6 +10,7 @@
      int n_steps_per_round;
      int save_frequency;
      std::string output_root_path;
+     std::vector<int> atomIndices;
  } ConfigOpts;
 
 
@@ -30,7 +31,7 @@ void exitWithMessage(const char* message);
 
 /**
  * Parse the config file
- */ 
+ */
 void parseConfigFile(const char* configFileName, ConfigOpts* out);
 
 /**
@@ -45,9 +46,10 @@ bool hasPeriodicBoundaries(const OpenMM::System& system);
 void printUname(void);
 
 /**
- * 
+ *
  */
 void resetRandomNumberSeed(OpenMM::Integrator* integrator);
 
-#endif
+void printVector(const std::vector<float>& d);
 
+#endif

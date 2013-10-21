@@ -8,16 +8,19 @@
 
 class ParallelKCenters {
 public:
-  ParallelKCenters(const NetCDFTrajectoryFile& ncTraj, int stride);
+  ParallelKCenters(const NetCDFTrajectoryFile& ncTraj, int stride,
+		   const std::vector<int>& atomIndices);
   ~ParallelKCenters() {
     free(coordinates);
   }
-  std::vector<float> getRmsdsFrom(std::pair<int, size_t> &ref);
-  std::pair<std::pair<int, size_t>, float> collectFarthestFrom(std::pair<int, size_t> &ref);
+  std::vector<float> getRmsdsFrom(const std::pair<int, size_t> &ref);
+  void cluster(float rmsdCutoff, const std::pair<int, size_t>& seed);
+
 
  private:
   void center();
   void computeTraces();
+  std::vector<int> atomIndices;
 
   int stride;
   float* coordinates;

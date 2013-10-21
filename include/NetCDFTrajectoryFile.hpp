@@ -7,13 +7,16 @@
 
 
 class NetCDFTrajectoryFile {
-public: 
+public:
   NetCDFTrajectoryFile(const std::string& filename, const char* mode, int n_atom);
-  ~NetCDFTrajectoryFile(void) {  
+  ~NetCDFTrajectoryFile(void) {
     delete handle;
   }
   int write(OpenMM::State state);
   void readPositions(int stride, float* out) const;
+  void readAxisMajorPositions(int stride, const std::vector<int>& atomIndices,
+			      int atomAlignment, float* out) const;
+
   int getNumAtoms() const {
     return n_atoms;
   }
@@ -25,15 +28,12 @@ public:
   void flush(void) {
     handle->sync();
   }
-  
+
 private:
   NcFile* handle;
   const char* mode;
   int n_atoms;
   int initializeHeaders(void);
 };
-
- 
-
 
 #endif

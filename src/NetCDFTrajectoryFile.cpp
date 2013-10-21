@@ -1,14 +1,19 @@
+// Copyright 2013 Robert McGibbon
+#include <mpi.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include <string>
 #include <iostream>
-#include <mpi.h>
+#include "utilities.hpp"
 #include "NetCDFTrajectoryFile.hpp"
 
+using std::string;
+using std::vector;
 
-NetCDFTrajectoryFile::NetCDFTrajectoryFile(const std::string& filename, const char* mode, int numAtoms=0): mode(mode), n_atoms(numAtoms) {
-
+NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
+       const char* mode, int numAtoms = 0): mode(mode), n_atoms(numAtoms) {
   NcFile::FileMode ncMode;
   if (strcmp(mode, "r") == 0) {
     handle = new NcFile(filename.c_str(), NcFile::ReadOnly);
@@ -19,7 +24,8 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const std::string& filename, const ch
       printf("ERROR NUMBER OF ATOMS");
       exit(1);
     }
-    handle = new NcFile(filename.c_str(), NcFile::Replace, NULL, 0, NcFile::Offset64Bits);
+    handle = new NcFile(filename.c_str(), NcFile::Replace, NULL, 0,
+                        NcFile::Offset64Bits);
   } else {
     printf("ERROR BAD MODE");
     exit(1);
@@ -33,7 +39,7 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const std::string& filename, const ch
   } else{
     printf("FILE OPENEND SUCCESSFULLY\n");
   }
-  
+
 
   if (strcmp(mode, "w") == 0) {
     initializeHeaders();
@@ -64,9 +70,9 @@ int NetCDFTrajectoryFile::initializeHeaders() {
 
   cellSpatialVar->put("XYZ", 3);
   cellAngularVar->put("alpha", 1, 5);
-  cellAngularVar->set_cur(1,0);
+  cellAngularVar->set_cur(1, 0);
   cellAngularVar->put("beta", 1, 4);
-  cellAngularVar->set_cur(2,0);
+  cellAngularVar->set_cur(2, 0);
   cellAngularVar->put("gamma", 1, 5);
 
   NcVar* timeVar = handle->add_var("time", ncFloat, frameDim);
@@ -74,7 +80,7 @@ int NetCDFTrajectoryFile::initializeHeaders() {
   NcVar* coordVar = handle->add_var("coordinates", ncFloat, frameDim, atomDim, spatialDim);
   coordVar->add_att("units", "angstrom");
 }
-    
+
 
 int NetCDFTrajectoryFile::write(OpenMM::State state) {
   if (strcmp(mode, "w") != 0)
@@ -88,7 +94,7 @@ int NetCDFTrajectoryFile::write(OpenMM::State state) {
   state.getPeriodicBoxVectors(a, b, c);
   double cellLengths[] = {a[0]*10.0, b[1]*10.0, c[2]*10.0};
   double cellAngles[] = {90.0, 90.0, 90.0};
-  std::vector<OpenMM::Vec3> positions = state.getPositions();
+  vector<OpenMM::Vec3> positions = state.getPositions();
   for (size_t i = 0; i < positions.size(); i++)
     positions[i] *= 10;
 
@@ -100,22 +106,37 @@ int NetCDFTrajectoryFile::write(OpenMM::State state) {
   return 1;
 }
 
-void NetCDFTrajectoryFile::readPositions(int stride, float* out) const {
-  int rank = MPI::COMM_WORLD.Get_rank();
+void NetCDFTrajectoryFile::readAxisMajorPositions(int stride,
+       const vector<int>& atomIndices, int atomAlignment, float* out) const {
+  static const int rank = MPI::COMM_WORLD.Get_rank();
   int numTotalFrames = handle->get_dim("frame")->size();
   int numFrames = (numTotalFrames+stride-1)/stride;
-  int numAtoms = handle->get_dim("atom")->size();
-  int numPaddedAtoms = ((numAtoms + 3) / 4) * 4;
-
+  int numTotalAtoms = handle->get_dim("atom")->size();
+  int numPaddedAtoms = ((atomIndices.size() + 3) / atomAlignment) * atomAlignment;
   NcVar* coord = handle->get_var("coordinates");
+  float *frame, *frameout;
+  int err = posix_memalign((void**) &frame, 16, numTotalAtoms*3*sizeof(float));
+  if (err != 0)
+    exitWithMessage("Malloc Error");
+
+
   int ii = 0;
   for (int i = 0; i < numTotalFrames; i += stride, ii++) {
-    float* frame = out+(ii)*numPaddedAtoms*3;
+    // i  is the index of the frame to read off the disk,
+    // ii is the index int `out` where we want to put it
     coord->set_cur(i, 0, 0);
-    coord->get(frame, 1, numAtoms, 3);
-    for (int j = 0; j < numAtoms*3; j++)
-      frame[j] /= 10;
-  }
+    coord->get(frame, 1, numTotalAtoms, 3);
+    frameout = out + ii*3*numPaddedAtoms;
+    for (int jj = 0; jj < atomIndices.size(); jj++) {
+      int j = atomIndices[jj];
+      // j is the index of the atom on disk
+      // jj is the index of the atom in atomIndices
 
-  printf("RETURNING FROM READ POSITIONS: rank=%d\n", rank);
+      for (int k = 0; k < 3; k++) {
+        float v = frame[j*3 + k] / 10.0;  // angstroms to nm
+        frameout[k*numPaddedAtoms + jj] = v;
+      }
+    }
+  }
+  free(frame);
 }

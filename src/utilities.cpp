@@ -1,28 +1,49 @@
-#include <cstdlib>
-#include <ctime>
+// Copyright 2013 Robert McGibbon
+#include <limits.h> /* PATH_MAX */
 #include <sys/utsname.h>
 #include <mpi.h>
+#include <cstdlib>
+#include <ctime>
+#include <iterator>
+#include <sstream>
+#include <string>
+#include <vector>
 #include "openmm/serialization/XmlSerializer.h"
 #include "utilities.hpp"
 #include "INIReader.h"
+
 #define MASTER 0
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
-OpenMM::Context* createContext(std::ifstream& systemXml, std::ifstream& integratorXml, const std::string& platformName) {
-  int rank = MPI::COMM_WORLD.Get_rank();
-  OpenMM::Platform::loadPluginsFromDirectory(
-        OpenMM::Platform::getDefaultPluginsDirectory());
+using std::string;
+using std::ifstream;
+using std::vector;
+using std::stringstream;
 
-  OpenMM::System* system = OpenMM::XmlSerializer::deserialize<OpenMM::System>(systemXml);
-  OpenMM::Integrator* integrator = OpenMM::XmlSerializer::deserialize<OpenMM::Integrator>(integratorXml);
+using OpenMM::Context;
+using OpenMM::System;
+using OpenMM::Platform;
+using OpenMM::Integrator;
+using OpenMM::XmlSerializer;
+
+
+Context* createContext(ifstream& systemXml, ifstream& integratorXml, const string& platformName) {
+  static const int rank = MPI::COMM_WORLD.Get_rank();
+  Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
+
+  System* system = XmlSerializer::deserialize<OpenMM::System>(systemXml);
+  Integrator* integrator =XmlSerializer::deserialize<OpenMM::Integrator>(integratorXml);
   resetRandomNumberSeed(integrator);
-  OpenMM::Platform* platform = &OpenMM::Platform::getPlatformByName(platformName);
-  OpenMM::Context* context = new OpenMM::Context(*system, *integrator, *platform);
+  Platform* platform = &Platform::getPlatformByName(platformName);
+  Context* context = new Context(*system, *integrator, *platform);
 
   if (rank == MASTER) {
     printf("\nContext created on OpenMM platform: %s\n", (*context).getPlatform().getName().c_str());
-    std::vector<std::string> names = (*context).getPlatform().getPropertyNames();
+    vector<string> names = (*context).getPlatform().getPropertyNames();
     for (int i = 0; i < names.size(); i++) {
-      std::string value = (*context).getPlatform().getPropertyValue(*context, names[i]);
+      string value = (*context).getPlatform().getPropertyValue(*context, names[i]);
       printf("  %s: %s\n", names[i].c_str(), value.c_str());
     }
   }
@@ -38,6 +59,9 @@ void exitWithMessage(const char* message) {
   MPI::Finalize();
   exit(EXIT_FAILURE);
 }
+void exitWithMessage(const string& message) {
+  exitWithMessage(message.c_str());
+}
 
 
 void parseConfigFile(const char* configFileName, ConfigOpts* out) {
@@ -45,13 +69,29 @@ void parseConfigFile(const char* configFileName, ConfigOpts* out) {
   if (reader.ParseError() < 0) {
       exitWithMessage("Could not find config file");
   }
-  
+
   out->n_steps_per_round = reader.GetInteger("", "n_steps_per_round", -1);
   out->n_rounds = reader.GetInteger("", "n_rounds", -1);
   out->save_frequency = reader.GetInteger("", "save_frequency", -1);
   out->output_root_path = reader.Get("", "output_root_path", ".");
 
-  
+  const string& atom_indices_file = reader.Get("", "rmsd_atom_indices_file", "");
+  if (atom_indices_file.size() > 0) {
+    char buf[PATH_MAX + 1];
+    realpath(atom_indices_file.c_str(), buf);
+    ifstream is(buf);
+    if (!is) {
+      stringstream ss;
+      ss << "cannot access " << buf << ": No such file or directory";
+      exitWithMessage(ss.str());
+    }
+    std::istream_iterator<int> start(is), end;
+    vector<int> atomIndices(start, end);
+    out->atomIndices = atomIndices;
+  } else {
+    out->atomIndices = vector<int>();
+  }
+
   if (out->n_steps_per_round <= 0)
       exitWithMessage("n_steps_per_round must be given and greater than 0");
   if (out->n_rounds <= 0)
@@ -61,7 +101,7 @@ void parseConfigFile(const char* configFileName, ConfigOpts* out) {
 }
 
 
-bool hasPeriodicBoundaries(const OpenMM::System& system) {
+bool hasPeriodicBoundaries(const System& system) {
   const int numForces = system.getNumForces();
   bool isPeriodic = false;
   for (int i = 0; i < numForces; i++) {
@@ -69,19 +109,19 @@ bool hasPeriodicBoundaries(const OpenMM::System& system) {
     if (force != NULL) {
       int nbMethod = force->getNonbondedMethod();
       if (nbMethod == OpenMM::NonbondedForce::NoCutoff) {
-	isPeriodic = false;
-	break;
+        isPeriodic = false;
+        break;
       } else if (nbMethod == OpenMM::NonbondedForce::CutoffNonPeriodic) {
-	isPeriodic = false;
-	break;
+        isPeriodic = false;
+        break;
       } else if (nbMethod == OpenMM::NonbondedForce::CutoffPeriodic) {
-	isPeriodic = true;
-	break;
+        isPeriodic = true;
+        break;
       } else if (nbMethod == OpenMM::NonbondedForce::Ewald) {
-	isPeriodic = true;
-	break;
+        isPeriodic = true;
+        break;
       } else if (nbMethod == OpenMM::NonbondedForce::PME) {
-	isPeriodic = true;
+        isPeriodic = true;
       }
     }
   }
@@ -94,7 +134,7 @@ void printUname(void) {
   static const int size = MPI::COMM_WORLD.Get_size();
   struct utsname sysinfo;
   uname(&sysinfo);
-  
+
   for (int i = 0; i < size; i++) {
     MPI::COMM_WORLD.Barrier();
     if (i == rank) {
@@ -102,19 +142,33 @@ void printUname(void) {
       printf("  System: %s %s %s\n", sysinfo.sysname, sysinfo.release, sysinfo.machine);
       printf("  Host Name: %s\n", sysinfo.nodename);
       printf("  OMP_NUM_THREADS: %s\n", getenv("OMP_NUM_THREADS"));
-      printf("  OpenMM Version: %s\n", OpenMM::Platform::getOpenMMVersion().c_str());
+      printf("  OpenMM Version: %s\n", Platform::getOpenMMVersion().c_str());
     }
   }
 }
 
 
-void resetRandomNumberSeed(OpenMM::Integrator* integrator) {
+void resetRandomNumberSeed(Integrator* integrator) {
   srand(time(NULL));
   int seed = rand() % 4294967296;
 
   OpenMM::LangevinIntegrator* lIntegrator  = dynamic_cast<OpenMM::LangevinIntegrator*>(integrator);
   if (lIntegrator != NULL) {
-    printf("LangevinIntegrator\n");
     lIntegrator->setRandomNumberSeed(seed);
+  }
+}
+
+void printVector(const vector<float>& d) {
+  static const int rank = MPI::COMM_WORLD.Get_rank();
+  static const int size = MPI::COMM_WORLD.Get_size();
+
+  for (int i = 0; i < size; i++) {
+    MPI::COMM_WORLD.Barrier();
+    if (rank == i) {
+      printf("Rank %d: [", rank);
+      for (int j = 0; j < d.size(); j++)
+        printf("%f,  ", d[j]);
+      printf("]\n");
+    }
   }
 }

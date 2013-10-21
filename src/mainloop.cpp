@@ -12,12 +12,15 @@
 #include "utilities.hpp"
 #include "NetCDFTrajectoryFile.hpp"
 #include "ParallelKCenters.hpp"
+#include "ParallelMSM.hpp"
 
 #define MASTER 0
 #define WIDTH 5    // used to create the output format
 #define PLATFORM_NAME "OpenCL"
 
 using std::string;
+using std::vector;
+using std::pair;
 using std::ifstream;
 using std::fstream;
 using std::stringstream;
@@ -69,7 +72,19 @@ int main(int argc, char* argv[]) {
 
 
     ParallelKCenters clusterer(file, 1, opts.atomIndices);
-    clusterer.cluster(0.05, std::pair<int, size_t>(0, 0));
+    clusterer.cluster(0.05, pair<int, size_t>(0, 0));
+    
+    vector<int> assignments;
+    assignments.push_back(0);
+    assignments.push_back(0);
+    assignments.push_back(1);
+    assignments.push_back(1);
+    assignments.push_back(0);
+    assignments.push_back(0);
+    assignments.push_back(0);
+    ParallelMSM(assignments, 2);
+
+
 
   }
   delete context;

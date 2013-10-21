@@ -1,4 +1,6 @@
 CPP = mpic++
+CC = mpicc
+
 NETCDF_DIR = /usr
 OPENMM_LINKS = -L$(OPENMM_LIB_PATH) -lOpenMM -lOpenMMSerialization
 NETCDF_LINKS = -L$(NETCDF_DIR)/lib -lnetcdf_c++
@@ -14,7 +16,7 @@ C_OBJ_FILES = $(patsubst src/%.c,obj/%.o,$(C_FILES))
 
 
 accelerator: $(CPP_OBJ_FILES) $(C_OBJ_FILES)
-	$(CPP)  -o $@ $^ $(LD_FLAGS)
+	$(CPP) -o $@ $^ $(LD_FLAGS)
 
 obj/%.o: src/%.cpp
 	@mkdir -p $(@D)
@@ -22,7 +24,7 @@ obj/%.o: src/%.cpp
 
 obj/%.o: src/%.c
 	@mkdir -p $(@D)
-	$(CPP) $(CPP_FLAGS) -c -o $@ $<
+	$(CPP) -fpermissive $(CPP_FLAGS) -c -o $@ $<
 
 clean:
 	rm -rf obj/* accelerator trj-*

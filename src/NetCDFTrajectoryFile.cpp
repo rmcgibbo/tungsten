@@ -67,6 +67,8 @@ int NetCDFTrajectoryFile::initializeHeaders() {
   NcVar* cellLengthsVar = handle->add_var("cell_lengths", ncDouble, frameDim, cellSpatialDim);
   NcVar* cellAnglesVar = handle->add_var("cell_angles", ncDouble, frameDim, cellAngularDim);
   cellAnglesVar->add_att("units", "degree");
+  cellLengthsVar->add_att("units", "angstrom");
+
 
   cellSpatialVar->put("XYZ", 3);
   cellAngularVar->put("alpha", 1, 5);
@@ -79,6 +81,8 @@ int NetCDFTrajectoryFile::initializeHeaders() {
   timeVar->add_att("units", "picosecond");
   NcVar* coordVar = handle->add_var("coordinates", ncFloat, frameDim, atomDim, spatialDim);
   coordVar->add_att("units", "angstrom");
+
+  return 1;
 }
 
 
@@ -108,7 +112,6 @@ int NetCDFTrajectoryFile::write(OpenMM::State state) {
 
 void NetCDFTrajectoryFile::readAxisMajorPositions(int stride,
        const vector<int>& atomIndices, int atomAlignment, float* out) const {
-  static const int rank = MPI::COMM_WORLD.Get_rank();
   int numTotalFrames = handle->get_dim("frame")->size();
   int numFrames = (numTotalFrames+stride-1)/stride;
   int numTotalAtoms = handle->get_dim("atom")->size();

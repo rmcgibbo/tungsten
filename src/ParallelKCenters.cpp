@@ -7,6 +7,7 @@
 #include <cfloat>
 #include <vector>
 #include <utility>
+#include <cstring>
 
 #include "utilities.hpp"
 #include "NetCDFTrajectoryFile.hpp"

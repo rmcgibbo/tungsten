@@ -16,14 +16,14 @@ public:
 private:
   void computeStateLabels();
   void computeTransitionCounts();
-  
+
   const int rank_;
   const int size_;
   const int numStates_;
   const std::vector<std::pair<int, int > > assignments_;
   const std::vector<std::pair<int, int> > centers_;
 
-  
+
   // This class deals externally with assignments and states
   // as std::pair<int, int> giving the node on which the conformation
   // resides and its offset in that trajectory. But internally,

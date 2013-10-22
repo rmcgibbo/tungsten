@@ -134,11 +134,11 @@ int *cs_post (int n, const int *parent) ;
 int cs_reach (cs *L, const cs *B, int k, int *xi, const int *Pinv) ;
 csd *cs_scc (cs *A) ;
 int cs_scatter (const cs *A, int j, double beta, int *w, double *x, int mark,
-    cs *C, int nz) ;
+                cs *C, int nz) ;
 int cs_splsolve (cs *L, const cs *B, int k, int *xi, double *x,
-    const int *Pinv) ;
+                 const int *Pinv) ;
 int cs_tdfs (int j, int k, int *head, const int *next, int *post,
-    int *stack) ;
+             int *stack) ;
 /* utilities */
 csd *cs_dalloc (int m, int n) ;
 cs *cs_done (cs *C, void *w, void *x, int ok) ;

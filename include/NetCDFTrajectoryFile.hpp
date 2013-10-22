@@ -17,7 +17,7 @@ public:
   /*
    * Write an OpenMM state to disk.
    *
-   */ 
+   */
   int write(OpenMM::State state);
 
 

@@ -73,23 +73,13 @@ ParallelKCenters::ParallelKCenters(const NetCDFTrajectoryFile& ncTraj,
   numCoordinates_ = numFrames_ * numPaddedAtoms_ * 3;
 
   traces_.resize(numFrames_);
-  ncTraj.readAxisMajorPositions(1, atomIndices_, 4, coordinates_);
-
-  if (rank_ == MASTER) {
-    printf("Coordinates\n");
-    for (int j = 0; j < 3; j++) {
-      printf("[");
-      for (int k = 0; k < numPaddedAtoms_; k++)
-        printf("%f   ", coordinates_[j*numPaddedAtoms_ + k]);
-      printf("]\n");
-    }
-  }
-
+  ncTraj.loadAllAxisMajorPositions(1, atomIndices_, 4, coordinates_);
   centerCoordinates();
   computeTraces();
 }
 
-void ParallelKCenters::cluster(float rmsdCutoff, const pair<int, int>& seed) {
+void ParallelKCenters::cluster(double rmsdCutoff, const pair<int, int>& seed) {
+
   pair<int, int> newCenter = seed;
   vector<float> distances(numFrames_);
   assignments_.resize(numFrames_);
@@ -98,7 +88,7 @@ void ParallelKCenters::cluster(float rmsdCutoff, const pair<int, int>& seed) {
 
   if (rank_ == MASTER) {
     printf("\nParallel KCenters Clustering\n");
-    printf("============================\n");
+    printf("----------------------------\n");
   }
 
   for (int i = 0; true; i++) {
@@ -120,13 +110,11 @@ void ParallelKCenters::cluster(float rmsdCutoff, const pair<int, int>& seed) {
       }
     centers_.push_back(max.first);
 
-    printVector(newDistances);
+    printMPIVector(newDistances);
   }
 
-  if (rank_ == MASTER) {
-    printf("\n=============================\n");
-    printf("Located k=%lu clusters\n", centers_.size());
-  }
+  if (rank_ == MASTER)
+    printf("Located k=%lu clusters\n\n", centers_.size());
 }
 
 

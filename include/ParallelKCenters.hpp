@@ -13,7 +13,7 @@ public:
 		   const std::vector<int>& atomIndices);
   ~ParallelKCenters() {}
   std::vector<float> getRmsdsFrom(const std::pair<int, int> &ref) const;
-  void cluster(float rmsdCutoff, const std::pair<int, int>& seed);
+  void cluster(double rmsdCutoff, const std::pair<int, int>& seed);
   std::vector< std::pair<int, int> > getAssignments() {
     return assignments_;
   }

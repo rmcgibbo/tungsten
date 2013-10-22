@@ -11,29 +11,50 @@ class NetCDFTrajectoryFile {
 public:
   NetCDFTrajectoryFile(const std::string& filename, const char* mode, int n_atom);
   ~NetCDFTrajectoryFile(void) {
-    delete handle;
+    delete handle_;
   }
+
+  /*
+   * Write an OpenMM state to disk.
+   *
+   */ 
   int write(OpenMM::State state);
-  void readPositions(int stride, float* out) const;
-  void readAxisMajorPositions(int stride, const std::vector<int>& atomIndices,
+
+
+  /*
+   * Fetch the `index`-th frame of positions from the trajectory
+   * residing on the `rank`th MPI rank.
+   */
+  std::vector<OpenMM::Vec3> loadPositionsMPI(int rank, int index);
+
+  /*
+   * Read an entire trajectory from disk, into aligned memory.
+   *
+   */
+  void loadAllAxisMajorPositions(int stride, const std::vector<int>& atomIndices,
 			      int atomAlignment, fvector16& out) const;
 
+
   int getNumAtoms() const {
-    return n_atoms;
+    return numAtoms_;
   }
   int getNumFrames() const {
-    if (handle == NULL)
+    if (handle_ == NULL)
       return 0;
-    return handle->get_dim("frame")->size();
+    return handle_->get_dim("frame")->size();
   }
   void flush(void) {
-    handle->sync();
+    if (handle_ != NULL)
+      handle_->sync();
   }
 
 private:
-  NcFile* handle;
-  const char* mode;
-  int n_atoms;
+  const int rank_;
+  const int size_;
+  int numAtoms_;
+  NcFile* handle_;
+  const char* mode_;
+
   int initializeHeaders(void);
 };
 

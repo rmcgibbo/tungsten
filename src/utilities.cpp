@@ -4,6 +4,7 @@
 #include <mpi.h>
 #include <cstdlib>
 #include <ctime>
+#include <utility>
 #include <iterator>
 #include <sstream>
 #include <string>
@@ -12,11 +13,12 @@
 #include "utilities.hpp"
 #include "INIReader.h"
 
-#define MASTER 0
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 
+namespace Tungsten {
+static const int MASTER = 0;
 using std::string;
 using std::ifstream;
 using std::vector;
@@ -30,7 +32,7 @@ using OpenMM::XmlSerializer;
 
 
 Context* createContext(ifstream& systemXml, ifstream& integratorXml, const string& platformName) {
-  static const int rank = MPI::COMM_WORLD.Get_rank();
+  const int rank = MPI::COMM_WORLD.Get_rank();
   Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
 
   System* system = XmlSerializer::deserialize<OpenMM::System>(systemXml);
@@ -70,15 +72,16 @@ void parseConfigFile(const char* configFileName, ConfigOpts* out) {
       exitWithMessage("Could not find config file");
   }
 
-  out->n_steps_per_round = reader.GetInteger("", "n_steps_per_round", -1);
-  out->n_rounds = reader.GetInteger("", "n_rounds", -1);
-  out->save_frequency = reader.GetInteger("", "save_frequency", -1);
-  out->output_root_path = reader.Get("", "output_root_path", ".");
-  out->openmm_platform = reader.Get("", "openmm_platform", "Reference");
-  out->kcenters_rmsd_cutoff = reader.GetFloat("", "kcenters_rmsd_cutoff", 1.0);
+
+  out->numRounds = reader.GetInteger("", "numRounds", -1);
+  out->numStepsPerRound = reader.GetInteger("", "numStepsPerRound", -1);
+  out->numStepsPerWrite = reader.GetInteger("", "numStepsPerWrite", -1);
+  out->outputRootPath = reader.Get("", "outputRootPath", ".");
+  out->openmmPlatform = reader.Get("", "openmmPlatform", "Reference");
+  out->kcentersRmsdCutoff = reader.GetReal("", "kcentersRmsdCutoff", 1.0);
 
 
-  const string& atom_indices_file = reader.Get("", "kcenters_rmsd_indices_file", "");
+  const string& atom_indices_file = reader.Get("", "kcentersRmsdIndicesFile", "");
   if (atom_indices_file.size() > 0) {
     char buf[PATH_MAX + 1];
     realpath(atom_indices_file.c_str(), buf);
@@ -89,18 +92,18 @@ void parseConfigFile(const char* configFileName, ConfigOpts* out) {
       exitWithMessage(ss.str());
     }
     std::istream_iterator<int> start(is), end;
-    vector<int> atomIndices(start, end);
-    out->atomIndices = atomIndices;
+    vector<int> kcentersRmsdIndices(start, end);
+    out->kcentersRmsdIndices = kcentersRmsdIndices;
   } else {
-    out->atomIndices = vector<int>();
+    out->kcentersRmsdIndices = vector<int>();
   }
 
-  if (out->n_steps_per_round <= 0)
-      exitWithMessage("n_steps_per_round must be given and greater than 0");
-  if (out->n_rounds <= 0)
-    exitWithMessage("n_rounds must be given and greater than 0");
-  if (out->save_frequency <= 0)
-    exitWithMessage("save_frequency must be given and greater than 0");
+  if (out->numStepsPerRound <= 0)
+      exitWithMessage(">numStepsPerRound must be given and greater than 0");
+  if (out->numRounds <= 0)
+    exitWithMessage("numRounds must be given and greater than 0");
+  if (out->numStepsPerWrite <= 0)
+    exitWithMessage("numStepsPerWrite must be given and greater than 0");
 }
 
 
@@ -133,8 +136,8 @@ bool hasPeriodicBoundaries(const System& system) {
 
 
 void printUname(void) {
-  static const int rank = MPI::COMM_WORLD.Get_rank();
-  static const int size = MPI::COMM_WORLD.Get_size();
+  const int rank = MPI::COMM_WORLD.Get_rank();
+  const int size = MPI::COMM_WORLD.Get_size();
   struct utsname sysinfo;
   uname(&sysinfo);
 
@@ -180,17 +183,4 @@ void resetRandomNumberSeed(System* system, Integrator* integrator)  {
    } catch(const std::bad_cast &bc) {}
 }
 
-void printVector(const vector<float>& d) {
-    const int rank = MPI::COMM_WORLD.Get_rank();
-    const int size = MPI::COMM_WORLD.Get_size();
-
-  for (int i = 0; i < size; i++) {
-    MPI::COMM_WORLD.Barrier();
-    if (rank == i) {
-      printf("Rank %d: [", rank);
-      for (int j = 0; j < d.size(); j++)
-        printf("%f,  ", d[j]);
-      printf("]\n");
-    }
-  }
 }

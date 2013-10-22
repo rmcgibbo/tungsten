@@ -28,8 +28,8 @@ using namespace Tungsten;
 
 int main(int argc, char* argv[]) {
   MPI::Init(argc, argv);
-  static const int size = MPI::COMM_WORLD.Get_size();
-  static const int rank = MPI::COMM_WORLD.Get_rank();
+  const int size = MPI::COMM_WORLD.Get_size();
+  const int rank = MPI::COMM_WORLD.Get_rank();
 
   // Parse the command line
   if (argc != 5) {
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
   // Create the context from the input files
   ifstream systemXml(argv[1]);
   ifstream integratorXml(argv[2]);
-  OpenMM::Context* context =  createContext(systemXml, integratorXml, opts.openmm_platform);
+  OpenMM::Context* context =  createContext(systemXml, integratorXml, opts.openmmPlatform);
   OpenMM::Integrator& integrator = context->getIntegrator();
   const OpenMM::System& system = context->getSystem();
   int numAtoms = system.getNumParticles();
@@ -59,24 +59,35 @@ int main(int argc, char* argv[]) {
 
   // Create the trajectory for our work on this one
   stringstream s;
-  s <<  opts.output_root_path << "/trj-" << std::setw(WIDTH) << std::setfill('0') << rank << ".nc";
+  s <<  opts.outputRootPath << "/trj-" << std::setw(WIDTH) << std::setfill('0') << rank << ".nc";
   string fileName = s.str();
   NetCDFTrajectoryFile file(fileName, "w", numAtoms);
 
-  for (int round = 0; round < opts.n_rounds; round++) {
+  for (int round = 0; round < opts.numRounds; round++) {
+    if (rank == MASTER)
+      printf("\nBeginning Round %d\n===================\n", round);
+
     file.write(context->getState(OpenMM::State::Positions, isPeriodic));
-    for (int step = 0; step < opts.n_steps_per_round; step += opts.save_frequency) {
-      integrator.step(opts.save_frequency);
+    for (int step = 0; step < opts.numStepsPerRound; step += opts.numStepsPerWrite) {
+      if (rank == MASTER)
+	printf("#");
+      integrator.step(opts.numStepsPerWrite);
       file.write(context->getState(OpenMM::State::Positions, isPeriodic));
     }
+    if (rank == MASTER)
+      printf("\n");
     file.flush();
 
-
-    ParallelKCenters clusterer(file, 1, opts.atomIndices);
-    clusterer.cluster(0.05, pair<int, int>(0, 0));
+    ParallelKCenters clusterer(file, 1, opts.kcentersRmsdIndices);
+    clusterer.cluster(opts.kcentersRmsdCutoff, pair<int, int>(0, 0));
     ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters());
+    pair<int, int> newCoordinateIndex = markovModel.scatterMinCountStateLabels();
 
-
+    MPI::COMM_WORLD.Barrier();
+    fflush(stdout);
+    printf("New Coordinates on Rank=%d: (%d, %d)\n", rank, newCoordinateIndex.first, newCoordinateIndex.second);
+    
+    //file.loadPositionsMPI(newCoordinateIndex.first, newCoordinateIndex.second);
 
   }
   delete context;

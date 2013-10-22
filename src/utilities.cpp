@@ -74,8 +74,11 @@ void parseConfigFile(const char* configFileName, ConfigOpts* out) {
   out->n_rounds = reader.GetInteger("", "n_rounds", -1);
   out->save_frequency = reader.GetInteger("", "save_frequency", -1);
   out->output_root_path = reader.Get("", "output_root_path", ".");
+  out->openmm_platform = reader.Get("", "openmm_platform", "Reference");
+  out->kcenters_rmsd_cutoff = reader.GetFloat("", "kcenters_rmsd_cutoff", 1.0);
 
-  const string& atom_indices_file = reader.Get("", "rmsd_atom_indices_file", "");
+
+  const string& atom_indices_file = reader.Get("", "kcenters_rmsd_indices_file", "");
   if (atom_indices_file.size() > 0) {
     char buf[PATH_MAX + 1];
     realpath(atom_indices_file.c_str(), buf);

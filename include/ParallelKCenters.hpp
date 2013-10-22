@@ -14,23 +14,32 @@ public:
   ~ParallelKCenters() {}
   std::vector<float> getRmsdsFrom(const std::pair<int, int> &ref) const;
   void cluster(float rmsdCutoff, const std::pair<int, int>& seed);
+  std::vector< std::pair<int, int> > getAssignments() {
+    return assignments_;
+  }
+  std::vector< std::pair<int, int> > getCenters() {
+    return centers_;
+  }
 
 
  private:
-  void center();
+  void centerCoordinates();
   void computeTraces();
-  std::vector<int> atomIndices;
+  std::vector<int> atomIndices_;
 
-  int stride;
-  fvector16 coordinates;
-  fvector16 traces;
+  int stride_;
+  fvector16 coordinates_;
+  fvector16 traces_;
 
-  const int rank;
-  const int size;
-  size_t numCoordinates;
-  size_t numAtoms;
-  size_t numPaddedAtoms;
-  size_t numFrames;
+  std::vector< std::pair<int, int> > assignments_;
+  std::vector< std::pair<int, int> > centers_;
+
+  const int rank_;
+  const int size_;
+  size_t numCoordinates_;
+  size_t numAtoms_;
+  size_t numPaddedAtoms_;
+  size_t numFrames_;
 
 };
 

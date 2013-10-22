@@ -17,10 +17,12 @@ using std::map;
 ParallelMSM::ParallelMSM(const std::vector<pair<int, int> >& assignments,
 			 const std::vector<pair<int, int> >& centers):
   assignments_(assignments), numStates_(centers.size()), centers_(centers),
-  rank_(MPI::COMM_WORLD.Get_rank()), size_(MPI::COMM_WORLD.Get_size())
+  rank_(MPI::COMM_WORLD.Get_rank()), size_(MPI::COMM_WORLD.Get_size()),
+  countsMatrix_(NULL)
 {
   // build MSM
   computeStateLabels();
+  computeTransitionCounts();
 }
 
 void ParallelMSM::computeStateLabels() {
@@ -97,7 +99,8 @@ void ParallelMSM::computeTransitionCounts() {
 }
 
 ParallelMSM::~ParallelMSM() {
-  //cs_free(countsMatrix_);
+  if (countsMatrix_ != NULL)
+    cs_free(countsMatrix_);
 }
 
 }

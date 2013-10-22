@@ -16,7 +16,6 @@
 
 #define MASTER 0
 #define WIDTH 5    // used to create the output format
-#define PLATFORM_NAME "OpenCL"
 
 using std::string;
 using std::vector;
@@ -39,10 +38,15 @@ int main(int argc, char* argv[]) {
   }
 
   printUname();
+
+  // Get the config file
+  ConfigOpts opts;
+  parseConfigFile(argv[4], &opts);
+
   // Create the context from the input files
   ifstream systemXml(argv[1]);
   ifstream integratorXml(argv[2]);
-  OpenMM::Context* context =  createContext(systemXml, integratorXml, PLATFORM_NAME);
+  OpenMM::Context* context =  createContext(systemXml, integratorXml, opts.openmm_platform);
   OpenMM::Integrator& integrator = context->getIntegrator();
   const OpenMM::System& system = context->getSystem();
   int numAtoms = system.getNumParticles();
@@ -52,10 +56,6 @@ int main(int argc, char* argv[]) {
   fstream stateXml(argv[3]);
   OpenMM::State* state = OpenMM::XmlSerializer::deserialize<OpenMM::State>(stateXml);
   context->setState(*state);
-
-  // Get the config file
-  ConfigOpts opts;
-  parseConfigFile(argv[4], &opts);
 
   // Create the trajectory for our work on this one
   stringstream s;
@@ -74,19 +74,7 @@ int main(int argc, char* argv[]) {
 
     ParallelKCenters clusterer(file, 1, opts.atomIndices);
     clusterer.cluster(0.05, pair<int, int>(0, 0));
-    
-    vector<pair<int, int> > assignments;
-    assignments.push_back(pair<int, int>(0,0));
-    assignments.push_back(pair<int, int>(0,0));
-    assignments.push_back(pair<int, int>(0,0));
-    assignments.push_back(pair<int, int>(0,1));
-    assignments.push_back(pair<int, int>(0,1));
-    assignments.push_back(pair<int, int>(0,1));
-    assignments.push_back(pair<int, int>(0,1));
-    vector<pair<int, int> > centers;
-    centers.push_back(pair<int, int>(0,0));
-    centers.push_back(pair<int, int>(0,1));
-    ParallelMSM(assignments, centers);
+    ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters());
 
 
 

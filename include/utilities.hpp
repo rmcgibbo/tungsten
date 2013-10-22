@@ -6,11 +6,13 @@
 #include "OpenMM.h"
 
  typedef struct{
-     int n_rounds;
-     int n_steps_per_round;
-     int save_frequency;
-     std::string output_root_path;
-     std::vector<int> atomIndices;
+     int numRounds;
+     int numStepsPerRound;
+     int numStepsPerWrite;
+     std::string outputRootPath;
+     std::vector<int> rmsdAtomIndices;
+     float kcentersRmsdCutoff;
+     std::string openmmPlatform;     
  } ConfigOpts;
 
 
@@ -46,9 +48,9 @@ bool hasPeriodicBoundaries(const OpenMM::System& system);
 void printUname(void);
 
 /**
- *
+ * Reset the random seed for any stochastic elements (mc barostat, langevin integrator, etc)
  */
-void resetRandomNumberSeed(OpenMM::Integrator* integrator);
+void resetRandomNumberSeed(OpenMM::System* system, OpenMM::Integrator* integrator);
 
 void printVector(const std::vector<float>& d);
 

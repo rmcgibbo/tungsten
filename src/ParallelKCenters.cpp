@@ -17,7 +17,7 @@ namespace Tungsten {
 using std::vector;
 using std::pair;
 
-#define MASTER 0
+static const int MASTER = 0;
 typedef pair<pair<int, int>, float> triplet;
 
 triplet maxLocAllReduce(const vector<float>& input) {
@@ -56,145 +56,134 @@ triplet maxLocAllReduce(const vector<float>& input) {
 
 
 ParallelKCenters::ParallelKCenters(const NetCDFTrajectoryFile& ncTraj,
-				   int stride, const vector<int>& atomIndices_) : 
-  stride(stride),
-  rank(MPI::COMM_WORLD.Get_rank()),
-  size(MPI::COMM_WORLD.Get_size()) {
-  atomIndices = vector<int>(atomIndices_); // copy
+				   int stride, const vector<int>& atomIndices) :
+  stride_(stride),
+  rank_(MPI::COMM_WORLD.Get_rank()),
+  size_(MPI::COMM_WORLD.Get_size())
+{
+  atomIndices_ = vector<int>(atomIndices); // copy
   // If atomIndices is empty, we use ALL of the atoms in the trajectory
-  if (atomIndices.size() == 0)
+  if (atomIndices_.size() == 0)
     for (int i = 0; i < ncTraj.getNumAtoms(); i++)
-      atomIndices.push_back(i);
-  numAtoms = atomIndices.size();
-  numPaddedAtoms = ((numAtoms + 3) / 4) * 4;
-  numFrames = ncTraj.getNumFrames();
-  numCoordinates = numFrames * numPaddedAtoms * 3;
+      atomIndices_.push_back(i);
+  numAtoms_ = atomIndices_.size();
+  numPaddedAtoms_ = ((numAtoms_ + 3) / 4) * 4;
+  numFrames_ = ncTraj.getNumFrames();
+  numCoordinates_ = numFrames_ * numPaddedAtoms_ * 3;
 
+  traces_.resize(numFrames_);
+  ncTraj.readAxisMajorPositions(1, atomIndices_, 4, coordinates_);
 
-
-  /*int err1 = posix_memalign((void**) &coordinates, 16, numCoordinates*sizeof(float));
-  int err2 = posix_memalign((void**) &traces, 16, numFrames*sizeof(float));
-  if (err1 != 0 || err2 != 0)
-    exitWithMessage("Malloc error");
-    memset(coordinates, 0, numCoordinates*sizeof(float));*/
-
-  //traces = new fvector16(numFrames);  coordinates = fvector16();
-  traces.resize(numFrames);
-  ncTraj.readAxisMajorPositions(1, atomIndices, 4, coordinates);
-
-  if (rank == MASTER) {
+  if (rank_ == MASTER) {
     printf("Coordinates\n");
     for (int j = 0; j < 3; j++) {
       printf("[");
-      for (int k = 0; k < numPaddedAtoms; k++)
-        printf("%f   ", coordinates[j*numPaddedAtoms + k]);
+      for (int k = 0; k < numPaddedAtoms_; k++)
+        printf("%f   ", coordinates_[j*numPaddedAtoms_ + k]);
       printf("]\n");
     }
   }
 
-  center();
+  centerCoordinates();
   computeTraces();
 }
 
 void ParallelKCenters::cluster(float rmsdCutoff, const pair<int, int>& seed) {
-  static const int rank = MPI::COMM_WORLD.Get_rank();
   pair<int, int> newCenter = seed;
-  vector<float> distances(numFrames);
-  vector< pair<int, int> > assignments(numFrames);
-  vector< pair<int, int> > centers;
+  vector<float> distances(numFrames_);
+  assignments_.resize(numFrames_);
+  centers_.resize(0);
   fill(distances.begin(), distances.end(), FLT_MAX);
 
-  if (rank == MASTER) {
+  if (rank_ == MASTER) {
     printf("\nParallel KCenters Clustering\n");
     printf("============================\n");
   }
 
   for (int i = 0; true; i++) {
     triplet max = maxLocAllReduce(distances);
-    if (rank == MASTER)
+    if (rank_ == MASTER)
       printf("Finishing when %.4f < %.4f.    ", max.second, rmsdCutoff);
     if (max.second < rmsdCutoff)
       break;
 
     pair<int, int> newCenter = max.first;
-    if (rank == MASTER)
+    if (rank_ == MASTER)
       printf("Found new center (%d, %d)\n", newCenter.first, newCenter.second);
 
     vector<float> newDistances = getRmsdsFrom(newCenter);
-    for (int j = 0; j < numFrames; j++)
+    for (int j = 0; j < numFrames_; j++)
       if (newDistances[j] < distances[j]) {
         distances[j] = newDistances[j];
-        assignments[j] = max.first;
+        assignments_[j] = max.first;
       }
-    centers.push_back(max.first);
+    centers_.push_back(max.first);
 
     printVector(newDistances);
   }
 
-  if (rank == MASTER) {
+  if (rank_ == MASTER) {
     printf("\n=============================\n");
-    printf("Located k=%lu clusters\n", centers.size());
+    printf("Located k=%lu clusters\n", centers_.size());
   }
 }
 
 
-void ParallelKCenters::center() {
-  for (int i = 0; i < numFrames; i++) {
+void ParallelKCenters::centerCoordinates() {
+  for (int i = 0; i < numFrames_; i++) {
     double center[] = {0, 0, 0};
     for (int j = 0; j < 3; j++)
-      for (int k = 0; k < numAtoms; k++)
-        center[j] += coordinates[i*3*numPaddedAtoms + j*numPaddedAtoms + k];
+      for (int k = 0; k < numAtoms_; k++)
+        center[j] += coordinates_[i*3*numPaddedAtoms_ + j*numPaddedAtoms_ + k];
 
     for (int j = 0; j < 3; j++)
-      center[j] /= numAtoms;
+      center[j] /= numAtoms_;
     for (int j = 0; j < 3; j++)
-      for (int k = 0; k < numAtoms; k++)
-        coordinates[i*3*numPaddedAtoms + j*numPaddedAtoms + k] -= center[j];
+      for (int k = 0; k < numAtoms_; k++)
+        coordinates_[i*3*numPaddedAtoms_ + j*numPaddedAtoms_ + k] -= center[j];
   }
 }
 
 void ParallelKCenters::computeTraces() {
-  for (int i = 0; i < numFrames; i++) {
+  for (int i = 0; i < numFrames_; i++) {
     double trace = 0;
     for (int j = 0; j < 3; j++)
-      for (int k = 0; k < numAtoms; k++)
-        trace += coordinates[i*3*numPaddedAtoms + j*numPaddedAtoms + k] *
-                 coordinates[i*3*numPaddedAtoms + j*numPaddedAtoms + k];
-    traces[i] = trace;
+      for (int k = 0; k < numAtoms_; k++)
+        trace += coordinates_[i*3*numPaddedAtoms_ + j*numPaddedAtoms_ + k] *
+                 coordinates_[i*3*numPaddedAtoms_ + j*numPaddedAtoms_ + k];
+    traces_[i] = trace;
   }
 }
 
 
 vector<float> ParallelKCenters::getRmsdsFrom(const pair<int, int> &ref) const {
-  static const int rank = MPI::COMM_WORLD.Get_rank();
-  static const int size = MPI::COMM_WORLD.Get_size();
-  if (ref.first >= size)
+  if (ref.first >= size_)
     exitWithMessage("IndexError: No such rank.");
-  if (ref.second >= numFrames)
+  if (ref.second >= numFrames_)
     exitWithMessage("IndexError: No such frame.");
   int err = 0;
-  float g = traces[ref.second];
+  float g = traces_[ref.second];
   float* frame;
 
   // Broadcast the frame of interest to all of the nodes
-  if (rank != ref.first) {
-    err = posix_memalign((void**) &frame, 16, numPaddedAtoms*3*sizeof(float));
+  if (rank_ != ref.first) {
+    err = posix_memalign((void**) &frame, 16, numPaddedAtoms_*3*sizeof(float));
     if (err != 0) exitWithMessage("Malloc error");
   } else
-    frame = const_cast<float*>(&coordinates[ref.second*numPaddedAtoms*3]);
+    frame = const_cast<float*>(&coordinates_[ref.second*numPaddedAtoms_*3]);
 
 
-  MPI::COMM_WORLD.Bcast(frame, numPaddedAtoms*3, MPI_FLOAT, ref.first);
+  MPI::COMM_WORLD.Bcast(frame, numPaddedAtoms_*3, MPI_FLOAT, ref.first);
   MPI::COMM_WORLD.Bcast(&g, 1, MPI_FLOAT, ref.first);
 
-  vector<float> result(numFrames);
-  //  #pragma omp for
-  for (int i = 0; i < numFrames; i++)
-    result[i] = sqrtf(msd_axis_major(numAtoms, numPaddedAtoms, numPaddedAtoms,
-                                     frame, &coordinates[i*numPaddedAtoms*3],
-                                     g, traces[i]));
+  vector<float> result(numFrames_);
+  #pragma omp for
+  for (int i = 0; i < numFrames_; i++)
+    result[i] = sqrtf(msd_axis_major(numAtoms_, numPaddedAtoms_, numPaddedAtoms_,
+                                     frame, &coordinates_[i*numPaddedAtoms_*3],
+                                     g, traces_[i]));
 
-  if (rank != ref.first)
+  if (rank_ != ref.first)
     free(frame);
   return result;
 }

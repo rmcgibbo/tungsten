@@ -2,7 +2,6 @@
 #define TUNGSTEN_PARALLELKCENTERS_H
 #include <vector>
 #include <utility>
-#include <malloc.h>
 #include "NetCDFTrajectoryFile.hpp"
 namespace Tungsten {
 

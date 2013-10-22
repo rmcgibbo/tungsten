@@ -10,6 +10,7 @@
 #include "typedefs.hpp"
 #include "NetCDFTrajectoryFile.hpp"
 namespace Tungsten {
+static const int MASTER = 0;
 
 using std::string;
 using std::vector;
@@ -113,8 +114,58 @@ int NetCDFTrajectoryFile::write(OpenMM::State state) {
 
 vector<OpenMM::Vec3> NetCDFTrajectoryFile::loadPositionsMPI(int rank, int index) {
 
+  // This could be done more efficiently by only exchanging the necessary pairs, but
+  // its complex to get right without deadlocking because many nodes may request 
+  // data that all needs to come from one node. So lets just share *all* of the indices.
+  // with Allgather.
+  vector<int> gatheredRank(size_);
+  vector<int> gatheredIndex(size_);
+  MPI::COMM_WORLD.Allgather(&rank, 1, MPI_INT, &gatheredRank[0], 1, MPI_INT);
+  MPI::COMM_WORLD.Allgather(&index, 1, MPI_INT, &gatheredIndex[0], 1, MPI_INT);
+  NcVar* coord = handle_->get_var("coordinates");
 
+  // Now, each node needs to look through the gatheredRank/gatheredSize and make 
+  // the appropriate send calls to give the data to the other nodes. It also
+  // needs to obviously make its own receive call.
+  const int tag = 123;
+  vector<double> sendBuffer(numAtoms_*3);
+  vector<double> recvBuffer(numAtoms_*3, -12345);
+  // each node only gets one receive, but it may need to
+  // make 0 or more sends
+  MPI::Request recvRequest;
+  vector<MPI::Request> sendRequests;
 
+  for (int i = 0; i < size_; i++) {
+    int j = gatheredRank[i];
+    // j needs to send data to node i.
+    // lets do the pair of send/recv.
+
+    if (j == rank_) {
+      // load the data into the send buffer
+      coord->set_cur(gatheredIndex[i], 0, 0);
+      coord->get(&sendBuffer[0], 1, numAtoms_, 3);
+      sendRequests.push_back(MPI::COMM_WORLD.Isend(&sendBuffer[0], numAtoms_*3, MPI_DOUBLE, i, tag));
+    }
+
+    if (i == rank_) {
+      // receive the data
+      recvRequest = MPI::COMM_WORLD.Irecv(&recvBuffer[0], numAtoms_*3, MPI_DOUBLE, j, tag);
+    }
+  }
+  
+  // make sure the nonblocking requests went through
+  recvRequest.Wait();
+  for (int i = 0; i < sendRequests.size(); i++)
+    sendRequests[i].Wait();
+
+  // reformat our recvBuffer into a vector of OpenMM::Vec3
+  vector<OpenMM::Vec3> retval;
+  for (int i = 0; i < numAtoms_; i++) {
+    OpenMM::Vec3 v(recvBuffer[i*3 + 0], recvBuffer[i*3 + 1], recvBuffer[i*3 + 2]);
+    retval.push_back(v);
+  }
+
+  return retval;
 }
 
 void NetCDFTrajectoryFile::loadAllAxisMajorPositions(
@@ -122,18 +173,17 @@ void NetCDFTrajectoryFile::loadAllAxisMajorPositions(
 {
   int numTotalFrames = handle_->get_dim("frame")->size();
   int numFrames = (numTotalFrames+stride-1)/stride;
-  int numTotalAtoms = handle_->get_dim("atom")->size();
   int numPaddedAtoms = ((atomIndices.size() + 3) / atomAlignment) * atomAlignment;
   NcVar* coord = handle_->get_var("coordinates");
   out.resize(numFrames*3*numPaddedAtoms);
-  vector<float> frame(numTotalAtoms*3);
+  vector<float> frame(numAtoms_*3);
   
   int ii = 0;
   for (int i = 0; i < numTotalFrames; i += stride, ii++) {
     // i  is the index of the frame to read off the disk,
     // ii is the index int `out` where we want to put it
     coord->set_cur(i, 0, 0);
-    coord->get(&frame[0], 1, numTotalAtoms, 3);
+    coord->get(&frame[0], 1, numAtoms_, 3);
     for (int jj = 0; jj < atomIndices.size(); jj++) {
       int j = atomIndices[jj];
       // j is the index of the atom on disk

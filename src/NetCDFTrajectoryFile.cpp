@@ -7,7 +7,7 @@
 #include <string>
 #include <iostream>
 #include "utilities.hpp"
-#include "typedefs.hpp"
+#include "aligned_allocator.hpp"
 #include "NetCDFTrajectoryFile.hpp"
 namespace Tungsten {
 static const int MASTER = 0;
@@ -167,34 +167,37 @@ vector<OpenMM::Vec3> NetCDFTrajectoryFile::loadNonlocalPositionsMPI(int rank, in
 
     return retval;
 }
-
-void NetCDFTrajectoryFile::loadAllAxisMajorPositions(
-    int stride, const vector<int>& atomIndices, int atomAlignment, fvector16& out) const
-{
-    int numTotalFrames = handle_->get_dim("frame")->size();
-    int numFrames = (numTotalFrames+stride-1)/stride;
-    int numPaddedAtoms = ((atomIndices.size() + 3) / atomAlignment) * atomAlignment;
-    NcVar* coord = handle_->get_var("coordinates");
-    out.resize(numFrames*3*numPaddedAtoms);
-    vector<float> frame(numAtoms_*3);
-
-    int ii = 0;
-    for (int i = 0; i < numTotalFrames; i += stride, ii++) {
-        // i  is the index of the frame to read off the disk,
-        // ii is the index int `out` where we want to put it
-        coord->set_cur(i, 0, 0);
-        coord->get(&frame[0], 1, numAtoms_, 3);
-        for (int jj = 0; jj < atomIndices.size(); jj++) {
-            int j = atomIndices[jj];
-            // j is the index of the atom on disk
-            // jj is the index of the atom in atomIndices
-            
-            for (int k = 0; k < 3; k++) {
-                float v = frame[j*3 + k] / 10.0;  // angstroms to nm
-                out[ii*numPaddedAtoms*3 + k*numPaddedAtoms + jj] = v;
-            }
-        }
-    }
-}
+// 
+// template<std::size_t N> std::vector<float, aligned_allocator<float, N> >
+// NetCDFTrajectoryFile::loadAllAxisMajorPositions(int stride, const std::vector<int>& atomIndices,
+//                      int atomAlignment) {
+// void NetCDFTrajectoryFile::loadAllAxisMajorPositions(
+//     int stride, const vector<int>& atomIndices, int atomAlignment, fvector16& out) const
+// {
+    // int numTotalFrames = handle_->get_dim("frame")->size();
+    // int numFrames = (numTotalFrames+stride-1)/stride;
+    // int numPaddedAtoms = ((atomIndices.size() + 3) / atomAlignment) * atomAlignment;
+    // NcVar* coord = handle_->get_var("coordinates");
+    // out.resize(numFrames*3*numPaddedAtoms);
+    // vector<float> frame(numAtoms_*3);
+    // 
+    // int ii = 0;
+    // for (int i = 0; i < numTotalFrames; i += stride, ii++) {
+    //     // i  is the index of the frame to read off the disk,
+    //     // ii is the index int `out` where we want to put it
+    //     coord->set_cur(i, 0, 0);
+    //     coord->get(&frame[0], 1, numAtoms_, 3);
+    //     for (int jj = 0; jj < atomIndices.size(); jj++) {
+    //         int j = atomIndices[jj];
+    //         // j is the index of the atom on disk
+    //         // jj is the index of the atom in atomIndices
+    //         
+    //         for (int k = 0; k < 3; k++) {
+    //             float v = frame[j*3 + k] / 10.0;  // angstroms to nm
+    //             out[ii*numPaddedAtoms*3 + k*numPaddedAtoms + jj] = v;
+    //         }
+    //     }
+    // }
+//}
 
 } //namespace

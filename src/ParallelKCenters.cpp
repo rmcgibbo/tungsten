@@ -67,13 +67,13 @@ ParallelKCenters::ParallelKCenters(const NetCDFTrajectoryFile& ncTraj,
     if (atomIndices_.size() == 0)
         for (int i = 0; i < ncTraj.getNumAtoms(); i++)
             atomIndices_.push_back(i);
+    numPaddedAtoms_ = ncTraj.getNumPaddedAtoms<4>(atomIndices);
     numAtoms_ = atomIndices_.size();
-    numPaddedAtoms_ = ((numAtoms_ + 3) / 4) * 4;
     numFrames_ = ncTraj.getNumFrames();
     numCoordinates_ = numFrames_ * numPaddedAtoms_ * 3;
 
     traces_.resize(numFrames_);
-    ncTraj.loadAllAxisMajorPositions(1, atomIndices_, 4, coordinates_);
+    coordinates_ = ncTraj.loadAllAxisMajorPositions<4>(stride, atomIndices);
     centerCoordinates();
     computeTraces();
 }

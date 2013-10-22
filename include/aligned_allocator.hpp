@@ -99,8 +99,8 @@ public:
  
         // aligned_allocator wraps malloc().
         //void * const pv = malloc(n * sizeof(T));
-	void* pv = NULL;
-	int err = posix_memalign(&pv, Alignment, n*sizeof(T));
+	    void* pv = NULL;
+	    int err = posix_memalign(&pv, Alignment, n*sizeof(T));
  
         // Allocators should throw std::bad_alloc in the case of memory allocation failure.
         if (err != 0) {

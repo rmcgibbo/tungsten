@@ -25,7 +25,7 @@ public:
    * Fetch the `index`-th frame of positions from the trajectory
    * residing on the `rank`th MPI rank.
    */
-  std::vector<OpenMM::Vec3> loadPositionsMPI(int rank, int index);
+  std::vector<OpenMM::Vec3> loadNonlocalPositionsMPI(int rank, int index);
 
   /*
    * Read an entire trajectory from disk, into aligned memory.

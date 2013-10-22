@@ -112,7 +112,7 @@ int NetCDFTrajectoryFile::write(OpenMM::State state) {
 }
 
 
-vector<OpenMM::Vec3> NetCDFTrajectoryFile::loadPositionsMPI(int rank, int index) {
+vector<OpenMM::Vec3> NetCDFTrajectoryFile::loadNonlocalPositionsMPI(int rank, int index) {
 
   // This could be done more efficiently by only exchanging the necessary pairs, but
   // its complex to get right without deadlocking because many nodes may request 

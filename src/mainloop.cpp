@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
     printf("New Coordinates on Rank=%d: (%d, %d)\n", rank, newCoordinateIndex.first, newCoordinateIndex.second);
     
 
-    file.loadPositionsMPI(newCoordinateIndex.first, newCoordinateIndex.second);
+    file.loadNonlocalPositionsMPI(newCoordinateIndex.first, newCoordinateIndex.second);
 
     
 

@@ -4,7 +4,8 @@
 #include <string>
 #include <netcdfcpp.h>
 #include "OpenMM.h"
-
+#include "typedefs.hpp"
+namespace Tungsten {
 
 class NetCDFTrajectoryFile {
 public:
@@ -15,7 +16,7 @@ public:
   int write(OpenMM::State state);
   void readPositions(int stride, float* out) const;
   void readAxisMajorPositions(int stride, const std::vector<int>& atomIndices,
-			      int atomAlignment, float* out) const;
+			      int atomAlignment, fvector16& out) const;
 
   int getNumAtoms() const {
     return n_atoms;
@@ -36,4 +37,5 @@ private:
   int initializeHeaders(void);
 };
 
+}
 #endif

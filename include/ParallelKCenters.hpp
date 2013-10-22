@@ -4,17 +4,16 @@
 #include <utility>
 #include <malloc.h>
 #include "NetCDFTrajectoryFile.hpp"
+namespace Tungsten {
 
 
 class ParallelKCenters {
 public:
   ParallelKCenters(const NetCDFTrajectoryFile& ncTraj, int stride,
 		   const std::vector<int>& atomIndices);
-  ~ParallelKCenters() {
-    free(coordinates);
-  }
-  std::vector<float> getRmsdsFrom(const std::pair<int, size_t> &ref);
-  void cluster(float rmsdCutoff, const std::pair<int, size_t>& seed);
+  ~ParallelKCenters() {}
+  std::vector<float> getRmsdsFrom(const std::pair<int, int> &ref) const;
+  void cluster(float rmsdCutoff, const std::pair<int, int>& seed);
 
 
  private:
@@ -23,8 +22,11 @@ public:
   std::vector<int> atomIndices;
 
   int stride;
-  float* coordinates;
-  float* traces;
+  fvector16 coordinates;
+  fvector16 traces;
+
+  const int rank;
+  const int size;
   size_t numCoordinates;
   size_t numAtoms;
   size_t numPaddedAtoms;
@@ -32,5 +34,5 @@ public:
 
 };
 
-
+}
 #endif

@@ -7,7 +7,9 @@
 #include <string>
 #include <iostream>
 #include "utilities.hpp"
+#include "typedefs.hpp"
 #include "NetCDFTrajectoryFile.hpp"
+namespace Tungsten {
 
 using std::string;
 using std::vector;
@@ -110,26 +112,25 @@ int NetCDFTrajectoryFile::write(OpenMM::State state) {
   return 1;
 }
 
+
 void NetCDFTrajectoryFile::readAxisMajorPositions(int stride,
-       const vector<int>& atomIndices, int atomAlignment, float* out) const {
+						  const vector<int>& atomIndices,
+						  int atomAlignment,
+						  fvector16& out) const {
   int numTotalFrames = handle->get_dim("frame")->size();
   int numFrames = (numTotalFrames+stride-1)/stride;
   int numTotalAtoms = handle->get_dim("atom")->size();
   int numPaddedAtoms = ((atomIndices.size() + 3) / atomAlignment) * atomAlignment;
   NcVar* coord = handle->get_var("coordinates");
-  float *frame, *frameout;
-  int err = posix_memalign((void**) &frame, 16, numTotalAtoms*3*sizeof(float));
-  if (err != 0)
-    exitWithMessage("Malloc Error");
-
-
+  out.resize(numFrames*3*numPaddedAtoms);
+  vector<float> frame(numTotalAtoms*3);
+  
   int ii = 0;
   for (int i = 0; i < numTotalFrames; i += stride, ii++) {
     // i  is the index of the frame to read off the disk,
     // ii is the index int `out` where we want to put it
     coord->set_cur(i, 0, 0);
-    coord->get(frame, 1, numTotalAtoms, 3);
-    frameout = out + ii*3*numPaddedAtoms;
+    coord->get(&frame[0], 1, numTotalAtoms, 3);
     for (int jj = 0; jj < atomIndices.size(); jj++) {
       int j = atomIndices[jj];
       // j is the index of the atom on disk
@@ -137,9 +138,10 @@ void NetCDFTrajectoryFile::readAxisMajorPositions(int stride,
 
       for (int k = 0; k < 3; k++) {
         float v = frame[j*3 + k] / 10.0;  // angstroms to nm
-        frameout[k*numPaddedAtoms + jj] = v;
+	out[ii*numPaddedAtoms*3 + k*numPaddedAtoms + jj] = v;
       }
     }
   }
-  free(frame);
 }
+
+} //namespace

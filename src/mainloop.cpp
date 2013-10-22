@@ -24,6 +24,7 @@ using std::pair;
 using std::ifstream;
 using std::fstream;
 using std::stringstream;
+using namespace Tungsten;
 
 
 int main(int argc, char* argv[]) {
@@ -72,17 +73,20 @@ int main(int argc, char* argv[]) {
 
 
     ParallelKCenters clusterer(file, 1, opts.atomIndices);
-    clusterer.cluster(0.05, pair<int, size_t>(0, 0));
+    clusterer.cluster(0.05, pair<int, int>(0, 0));
     
-    vector<int> assignments;
-    assignments.push_back(0);
-    assignments.push_back(0);
-    assignments.push_back(1);
-    assignments.push_back(1);
-    assignments.push_back(0);
-    assignments.push_back(0);
-    assignments.push_back(0);
-    ParallelMSM(assignments, 2);
+    vector<pair<int, int> > assignments;
+    assignments.push_back(pair<int, int>(0,0));
+    assignments.push_back(pair<int, int>(0,0));
+    assignments.push_back(pair<int, int>(0,0));
+    assignments.push_back(pair<int, int>(0,1));
+    assignments.push_back(pair<int, int>(0,1));
+    assignments.push_back(pair<int, int>(0,1));
+    assignments.push_back(pair<int, int>(0,1));
+    vector<pair<int, int> > centers;
+    centers.push_back(pair<int, int>(0,0));
+    centers.push_back(pair<int, int>(0,1));
+    ParallelMSM(assignments, centers);
 
 
 

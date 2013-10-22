@@ -35,7 +35,7 @@ Context* createContext(ifstream& systemXml, ifstream& integratorXml, const strin
 
   System* system = XmlSerializer::deserialize<OpenMM::System>(systemXml);
   Integrator* integrator =XmlSerializer::deserialize<OpenMM::Integrator>(integratorXml);
-  resetRandomNumberSeed(integrator);
+  resetRandomNumberSeed(system, integrator);
   Platform* platform = &Platform::getPlatformByName(platformName);
   Context* context = new Context(*system, *integrator, *platform);
 
@@ -148,19 +148,38 @@ void printUname(void) {
 }
 
 
-void resetRandomNumberSeed(Integrator* integrator) {
-  srand(time(NULL));
-  int seed = rand() % 4294967296;
+void resetRandomNumberSeed(System* system, Integrator* integrator)  {
+  const int rank = MPI::COMM_WORLD.Get_rank(); 
+  const int randomSeed = (rand() % 4294967296) * (rank+1);
 
-  OpenMM::LangevinIntegrator* lIntegrator  = dynamic_cast<OpenMM::LangevinIntegrator*>(integrator);
-  if (lIntegrator != NULL) {
-    lIntegrator->setRandomNumberSeed(seed);
+  for(int i=0; i< system->getNumForces(); i++) {
+    OpenMM::Force &force = system->getForce(i);
+    try {
+      OpenMM::AndersenThermostat &ATForce = dynamic_cast<OpenMM::AndersenThermostat &>(force);
+      ATForce.setRandomNumberSeed(randomSeed);
+      continue;
+    } catch(const std::bad_cast &bc) {}
+    try {
+      OpenMM::MonteCarloBarostat &MCBForce = dynamic_cast<OpenMM::MonteCarloBarostat &>(force);
+      MCBForce.setRandomNumberSeed(randomSeed);
+      continue;
+    } catch(const std::bad_cast &bc) {}
+    try {
+      OpenMM::MonteCarloAnisotropicBarostat &MCBForce = dynamic_cast<OpenMM::MonteCarloAnisotropicBarostat &>(force);
+      MCBForce.setRandomNumberSeed(randomSeed);
+      continue;
+    } catch(const std::bad_cast &bc) {}
   }
+  
+   try {
+     OpenMM::LangevinIntegrator &li = dynamic_cast<OpenMM::LangevinIntegrator &>(*integrator);
+     li.setRandomNumberSeed(randomSeed);
+   } catch(const std::bad_cast &bc) {}
 }
 
 void printVector(const vector<float>& d) {
-  static const int rank = MPI::COMM_WORLD.Get_rank();
-  static const int size = MPI::COMM_WORLD.Get_size();
+    const int rank = MPI::COMM_WORLD.Get_rank();
+    const int size = MPI::COMM_WORLD.Get_size();
 
   for (int i = 0; i < size; i++) {
     MPI::COMM_WORLD.Barrier();

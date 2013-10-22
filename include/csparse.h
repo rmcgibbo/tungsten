@@ -18,6 +18,10 @@
 
 #ifndef _CS_H
 #define _CS_H
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 #ifdef MATLAB_MEX_FILE
 #include "mex.h"
@@ -149,4 +153,10 @@ csd *cs_ddone (csd *D, cs *C, void *w, int ok) ;
 #define CS_MARKED(Ap,j) (Ap [j] < 0)
 #define CS_MARK(Ap,j) { Ap [j] = CS_FLIP (Ap [j]) ; }
 #define CS_OVERFLOW(n,size) (n > INT_MAX / (int) size)
+
+#ifdef __cplusplus
+}
 #endif
+#endif
+
+

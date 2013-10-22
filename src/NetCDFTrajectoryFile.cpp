@@ -15,7 +15,7 @@ static const int MASTER = 0;
 using std::string;
 using std::vector;
 
-NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,g
+NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
                                            const char* mode, int numAtoms = 0):
     mode_(mode), numAtoms_(numAtoms), rank_(MPI::COMM_WORLD.Get_rank()),
     size_(MPI::COMM_WORLD.Get_size())

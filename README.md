@@ -12,7 +12,7 @@ Dependencies
 ------------
 Tungsten has three dependencies.
 - [OpenMM](https://simtk.org/home/openmm) for running simulations.
-- [netcdf](http://www.unidata.ucar.edu/software/netcdf/docs/index.html) for saving and
+- [netCDF](http://www.unidata.ucar.edu/software/netcdf/docs/index.html) for saving and
 loading trajectories to disk (tungsten writes AMBER NetCDF-compatible trajectories).
 - [MPI](http://en.wikipedia.org/wiki/Message_Passing_Interface) for message passing and
 intra-processor coordination.

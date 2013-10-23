@@ -70,7 +70,12 @@ int main(int argc, char* argv[]) {
         for (int step = 0; step < opts.numStepsPerRound; step += opts.numStepsPerWrite) {
             if (rank == MASTER)
                 printf("#");
-            integrator.step(opts.numStepsPerWrite);
+            try {
+                integrator.step(opts.numStepsPerWrite);
+            } catch (OpenMM::OpenMMException e) {
+                printf("An exception occured on rank=%d: %s\n", rank, e.what());
+                exitWithMessage("Exit Failure");
+            }
             file.write(context->getState(OpenMM::State::Positions, isPeriodic));
         }
         printfM("\n");

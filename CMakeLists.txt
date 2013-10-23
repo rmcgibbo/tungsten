@@ -36,7 +36,7 @@ include_directories(${OpenMM_INCLUDE_PATH})
 include_directories(${NetCDF_INCLUDE_DIR})
 include_directories(${NetCDF_INCLUDE_DIRS})
 
-target_link_libraries(tungsten ${NetCDF_CXX_LIBRARY})
+target_link_libraries(tungsten ${NetCDF_C_LIBRARY})
 target_link_libraries(tungsten ${OpenMM_LIBRARY})
 target_link_libraries(tungsten ${OpenMM_SERIALIZATION_LIBRARY})
 

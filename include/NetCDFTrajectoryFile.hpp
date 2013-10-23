@@ -1,19 +1,22 @@
 #ifndef TUNGSTEN_NETCDFTRAJECTORY_FILE_H_
 #define TUNGSTEN_NETCDFTRAJECTORY_FILE_H_
 #include <stddef.h>
+#include "netcdf.h"
 #include <vector>
 #include <string>
-#include <netcdfcpp.h>
 #include "OpenMM.h"
 #include "typedefs.hpp"
 #include "aligned_allocator.hpp"
 namespace Tungsten {
+static const int NC_INVALID = -1;
+
+#define NC_ERR(e) {printf("Error: %s at %s, line %d\n", nc_strerror(e), __FILE__, __LINE__); exitWithMessage("");}
 
 class NetCDFTrajectoryFile {
 public:
     NetCDFTrajectoryFile(const std::string& filename, const std::string& mode, int numAtoms);
     ~NetCDFTrajectoryFile(void) {
-        delete handle_;
+        if (int r = nc_close(ncid_)) NC_ERR(r);
     }
 
     /*
@@ -51,22 +54,25 @@ public:
      */
     template<std::size_t N> std::vector<float, aligned_allocator<float, N*sizeof(float)> >
     loadAllAxisMajorPositions(int stride, const std::vector<int>& atomIndices) const {
-        // total number of frames in the dataset
-        int numTotalFrames = handle_->get_dim("frame")->size();
+        size_t numTotalFrames = getNumFrames();
+        int numAtoms = getNumAtoms();
         // number of frames that we're actually going to read
         int numFrames = (numTotalFrames + stride - 1) / stride;
         // number of atoms in the output dimension
         int numPaddedAtoms = getNumPaddedAtoms<N>(atomIndices);
-        NcVar* coord = handle_->get_var("coordinates");
-        std::vector<float> frame(numAtoms_*3);
+        std::vector<float> frame(numAtoms*3);
         std::vector<float, aligned_allocator<float, N*sizeof(float)> > out(numFrames*3*numPaddedAtoms);
 
         int ii = 0;
         for (int i = 0; i < numTotalFrames; i += stride, ii++) {
             // i  is the index of the frame to read off the disk,
             // ii is the index int `out` where we want to put it
-            coord->set_cur(i, 0, 0);
-            coord->get(&frame[0], 1, numAtoms_, 3);
+            //coord->set_cur(i, 0, 0);
+            //coord->get(&frame[0], 1, numAtoms_, 3);
+            size_t start[] = {i, 0, 0};
+            size_t count[] = {1, numAtoms, 3};
+            if (int r = nc_get_vara_float(ncid_, coordVar_, start, count, &frame[0])) NC_ERR(r);
+            
             for (int jj = 0; jj < atomIndices.size(); jj++) {
                 int j = atomIndices[jj];
                 // j is the index of the atom on disk
@@ -97,35 +103,63 @@ public:
     /* 
      * Get the number of atoms stored in this trajectory
      */ 
-    int getNumAtoms() const {
-        return numAtoms_;
+    size_t getNumAtoms() const {
+        if (!isvalid()) {
+            printf("invalid");
+        }
+        size_t numAtoms;
+        if (int r = nc_inq_dimlen(ncid_, atomDim_, &numAtoms)) NC_ERR(r);
+        return numAtoms;
     }
     
     /*
      * Get the number of frames/snapshots stored in this trajectory
      */ 
-    int getNumFrames() const {
-        if (handle_ == NULL)
-            return 0;
-        return handle_->get_dim("frame")->size();
+    size_t getNumFrames() const {
+        // total number of frames in the dataset
+        size_t numTotalFrames;
+        if (int r = nc_inq_dimlen(ncid_, frameDim_, &numTotalFrames)) NC_ERR(r);
+        return numTotalFrames;
     }
     
-    /*
+    /**
      * Flush the trajectory, writing any contents in internal buffers to disk
      */
     void flush(void) {
-        if (handle_ != NULL)
-            handle_->sync();
+        if (int r = nc_sync(ncid_)) NC_ERR(r);
+    }
+    
+    /**
+     * 
+     */
+    bool isvalid(void) const {
+        return (ncid_ != NC_INVALID);
     }
 
 private:
+    int initializeHeaders(int numAtoms);
+    int loadHeaders();
+    
     const int rank_;
     const int size_;
-    int numAtoms_;
-    NcFile* handle_;
     const std::string mode_;
 
-    int initializeHeaders(void);
+    // the file handle
+    int ncid_; 
+    // dimensions
+    int frameDim_;
+    int spatialDim_;
+    int atomDim_;
+    int cellSpatialDim_;
+    int cellAngularDim_;
+    int labelDim_;
+    // variables
+    int cellSpatialVar_;
+    int cellAngularVar_;
+    int cellLengthsVar_;
+    int cellAnglesVar_;
+    int timeVar_;
+    int coordVar_;
 };
 
 }

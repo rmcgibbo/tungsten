@@ -6,3 +6,4 @@ src/.dirstamp
 cmake_install.cmake
 tungsten
 data/trj-*.nc
+Makefile

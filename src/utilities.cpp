@@ -1,4 +1,25 @@
-// Copyright 2013 Robert McGibbon
+//////////////////////////////////////////////////////////////////////////
+// This file is part of Tungsten
+//
+// Tungsten is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published
+// by the Free Software Foundation, either version 2.1 of the License, or
+// (at your option) any later version.
+//
+// Tungsten is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+//
+//////////////////////////////////////////////////////////////////////////
+//
+// Copyright (c) 2013 Stanford University
+// Author: Robert McGibbon
+// Contributors:
+
 #include <limits.h> /* PATH_MAX */
 #include <sys/utsname.h>
 #include <mpi.h>

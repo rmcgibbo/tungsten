@@ -1,4 +1,25 @@
-// Copyright 2013 Robert McGibbon
+//////////////////////////////////////////////////////////////////////////
+// This file is part of Tungsten
+//
+// Tungsten is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published
+// by the Free Software Foundation, either version 2.1 of the License, or
+// (at your option) any later version.
+//
+// Tungsten is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+//
+//////////////////////////////////////////////////////////////////////////
+//
+// Copyright (c) 2013 Stanford University
+// Author: Robert McGibbon
+// Contributors:
+
 #ifndef TUNGSTEN_PARALLELMSM_H
 #define TUNGSTEN_PARALLELMSM_H
 #include <vector>
@@ -42,7 +63,7 @@ private:
     /**
      * The input argumnets for the constructor give the assignments in terms
      * of the global <rank,index> coordinates of the generator to which each
-     * frame is assigned. But internally when we build a sparse matrix, we 
+     * frame is assigned. But internally when we build a sparse matrix, we
      * want to use contiguous [0,...,numStates-1] indexing. This method
      * computes the mapping and inverse mapping between these two index systems
      * and populates the private variable `stateLabels_`, which gives the

@@ -1,5 +1,5 @@
 // Copyright 2013 Robert McGibbon
-#include <mpi.h>
+#include "mpi.h"
 #include <cstdio>
 #include <cstdlib>
 #include <limits>  // for portable isinf/isnan

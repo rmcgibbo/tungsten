@@ -1,7 +1,7 @@
 #ifndef TUNGSTEN_PARALLELKCENTERS_H
 #define TUNGSTEN_PARALLELKCENTERS_H
 #include <vector>
-#include <utility>
+#include "typedefs.hpp"
 #include "aligned_allocator.hpp"
 #include "NetCDFTrajectoryFile.hpp"
 namespace Tungsten {
@@ -9,15 +9,44 @@ namespace Tungsten {
 
 class ParallelKCenters {
 public:
+    /**
+     * Run k-centers RMSD clustering in parallel over MPI. Each MPI rank is
+     * associated with a single trajectory. EACH TRAJECTORY MUST BE THE
+     * SAME LENGTH. This is currently assumed, but unchecked. It could
+     * be circumvented with a more clever parallel reductio step.
+     *
+     * @param ncTraj        The trajectory that that this rank loads from
+     * @param stride        Load only every stride-th frame, to save memory
+     * @param atomIndices   The indices of the atoms to load and use for the
+     *                      RMSD calculation.
+     */
     ParallelKCenters(const NetCDFTrajectoryFile& ncTraj, int stride,
                      const std::vector<int>& atomIndices);
-    ~ParallelKCenters() {}
-    std::vector<float> getRmsdsFrom(const std::pair<int, int> &ref) const;
-    void cluster(double rmsdCutoff, const std::pair<int, int>& seed);
-    std::vector< std::pair<int, int> > getAssignments() {
+
+    /**
+     * Compute the RMSDs from one conformation that may be located on ANY
+     * MPI rank to all of the conformations on THIS mpi rank. If any of
+     * the positions contain NANs in them, the distance is reported as zero.
+     * this is good for kcenters because it ensures that these conformations
+     * are never chosen as a center.
+     *
+     * @param rank
+     * @param index
+     *
+     * @return
+     */
+    std::vector<float> getRmsdsFrom(int rank, int index) const;
+
+    /**
+     *
+     *
+     */
+    void cluster(double rmsdCutoff, int seedRank, int seedIndex);
+
+    std::vector<gindex> getAssignments() {
         return assignments_;
     }
-    std::vector< std::pair<int, int> > getCenters() {
+    std::vector<gindex> getCenters() {
         return centers_;
     }
 
@@ -31,8 +60,8 @@ private:
     std::vector<float, aligned_allocator<float, 4*sizeof(float)> > coordinates_;
     std::vector<float> traces_;
 
-    std::vector< std::pair<int, int> > assignments_;
-    std::vector< std::pair<int, int> > centers_;
+    std::vector<gindex> assignments_;
+    std::vector<gindex> centers_;
 
     const int rank_;
     const int size_;

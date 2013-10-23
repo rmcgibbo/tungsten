@@ -2,6 +2,7 @@ CPP = mpic++
 CC = mpicc
 
 NETCDF_DIR = /usr
+NETCDF_DIR = /Library/Frameworks/EPD64.framework/Versions/7.1
 OPENMM_LINKS = -L$(OPENMM_LIB_PATH) -lOpenMM -lOpenMMSerialization
 NETCDF_LINKS = -L$(NETCDF_DIR)/lib -lnetcdf_c++
 

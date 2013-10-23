@@ -30,11 +30,12 @@ static inline bool isfinite(T x)  {
 }
 
 NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
-        const string& mode, int numAtoms = 0)
+                                           const string& mode, int numAtoms = 0)
     : mode_(mode)
     , numAtoms_(numAtoms)
     , rank_(MPI::COMM_WORLD.Get_rank())
-    , size_(MPI::COMM_WORLD.Get_size()) {
+    , size_(MPI::COMM_WORLD.Get_size())
+{
     NcFile::FileMode ncMode;
     if (mode_.compare("r") == 0) {
         handle_ = new NcFile(filename.c_str(), NcFile::ReadOnly);
@@ -67,7 +68,7 @@ int NetCDFTrajectoryFile::initializeHeaders() {
     handle_->add_att("programVersion", "0.1");
     handle_->add_att("Conventions", "AMBER");
     handle_->add_att("ConventionVersion", "1.0");
-
+    
     NcDim* frameDim = handle_->add_dim("frame", 0);
     NcDim* spatialDim = handle_->add_dim("spatial", 3);
     NcDim* atomDim = handle_->add_dim("atom", numAtoms_);
@@ -172,18 +173,18 @@ PositionsAndPeriodicBox NetCDFTrajectoryFile::loadNonlocalStateMPI(int rank, int
             coord->set_cur(gatheredIndex[i], 0, 0);
             cellLengths->get(&sendCellLengthsBuffer[0], 1, 3);
             sendRequests1.push_back(MPI::COMM_WORLD.Isend(&sendPositionsBuffer[0],
-                                    numAtoms_*3, MPI_FLOAT, i, tag1));
+                                   numAtoms_*3, MPI_FLOAT, i, tag1));
             sendRequests2.push_back(MPI::COMM_WORLD.Isend(&sendCellLengthsBuffer[0],
-                                    3, MPI_DOUBLE, i, tag2));
+                                   3, MPI_DOUBLE, i, tag2));
         }
 
         if (i == rank_) {
             // receive the data
             recvRequest1 = MPI::COMM_WORLD.Irecv(&recvPositionsBuffer[0],
-                                                 numAtoms_*3, MPI_FLOAT, j, tag1);
+                                                numAtoms_*3, MPI_FLOAT, j, tag1);
             recvRequest2 = MPI::COMM_WORLD.Irecv(&recvCellLengthsBuffer[0], 3,
                                                  MPI_DOUBLE, j, tag2);
-        }
+         }
     }
     // make sure the nonblocking requests went through
     recvRequest1.Wait();

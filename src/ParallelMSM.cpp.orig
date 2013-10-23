@@ -31,7 +31,8 @@ ParallelMSM::ParallelMSM(const std::vector<gindex>& assignments,
     , centers_(centers)
     , rank_(MPI::COMM_WORLD.Get_rank())
     , size_(MPI::COMM_WORLD.Get_size())
-    , countsMatrix_(NULL) {
+    , countsMatrix_(NULL)
+{
     // build MSM
     computeStateLabels();
     computeTransitionCounts();

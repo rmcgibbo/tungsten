@@ -5,18 +5,20 @@
 #include <string>
 #include <netcdfcpp.h>
 #include "OpenMM.h"
+#include "typedefs.hpp"
 #include "aligned_allocator.hpp"
 namespace Tungsten {
 
 class NetCDFTrajectoryFile {
 public:
-    NetCDFTrajectoryFile(const std::string& filename, const char* mode, int n_atom);
+    NetCDFTrajectoryFile(const std::string& filename, const std::string& mode, int numAtoms);
     ~NetCDFTrajectoryFile(void) {
         delete handle_;
     }
 
     /*
-     * Write an OpenMM state to disk.
+     * Write an OpenMM state to disk. If any nonfinite numbers are detected
+     * in the positions, the positions are written with all NANs.
      */
     int write(OpenMM::State state);
 
@@ -28,12 +30,12 @@ public:
      * @param rank    the MPI rank of the process to load from
      * @param index   the index of the frame to load
      */
-    std::vector<OpenMM::Vec3> loadNonlocalPositionsMPI(int rank, int index);
+    PositionsAndPeriodicBox loadNonlocalStateMPI(int rank, int index);
 
     /*
      * Read an entire trajectory from disk, returning it into an aligned vector.
      *
-     * @param N             Template parameter for the alignment you request. To
+     * @tparam N            Template parameter for the alignment you request. To
      *                      get 4-float (16 byte) aligned memory, use N=4.
      * @param stride        Load only every `stride`-th frame from the tajectory,
      *                      skipping the others
@@ -121,7 +123,7 @@ private:
     const int size_;
     int numAtoms_;
     NcFile* handle_;
-    const char* mode_;
+    const std::string mode_;
 
     int initializeHeaders(void);
 };

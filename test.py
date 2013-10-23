@@ -6,6 +6,16 @@ t1 = md.load('data/trj-00000.nc', top='data/input.pdb', atom_indices=atom_indice
 t2 = md.load('data/trj-00001.nc', top='data/input.pdb', atom_indices=atom_indices)
 t = t1 + t2
 
+print 'coords'
+print t.xyz
+
+print t.time
+
+print 'unitcell lengths'
+print t.unitcell_lengths
+
+exit()
+
 r = md.rmsd_cache(t, 'axis')
 
 print "Coords"

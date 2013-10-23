@@ -70,7 +70,8 @@ ParallelKCenters::ParallelKCenters(const NetCDFTrajectoryFile& ncTraj,
                                    int stride, const vector<int>& atomIndices)
     : stride_(stride)
     , rank_(MPI::COMM_WORLD.Get_rank())
-    , size_(MPI::COMM_WORLD.Get_size()) {
+    , size_(MPI::COMM_WORLD.Get_size())
+{
     atomIndices_ = vector<int>(atomIndices); // copy
     // If atomIndices is empty, we use ALL of the atoms in the trajectory
     if (atomIndices_.size() == 0)

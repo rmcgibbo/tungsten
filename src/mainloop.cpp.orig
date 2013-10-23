@@ -85,10 +85,10 @@ int main(int argc, char* argv[]) {
         MPI::COMM_WORLD.Barrier();
         fflush(stdout);
         printf("New Coordinates on Rank=%d: (%d, %d)\n", rank,
-               newConformation.rank, newConformation.frame);
+              newConformation.rank, newConformation.frame);
 
         PositionsAndPeriodicBox s = file.loadNonlocalStateMPI(
-                                        newConformation.rank, newConformation.frame);
+            newConformation.rank, newConformation.frame);
         context->setPositions(s.positions);
         context->setPeriodicBoxVectors(s.boxA, s.boxB, s.boxC);
         printfM("Randomizing velocities to T=%.2f\n", temperature);

@@ -1,3 +1,4 @@
+// Copyright 2013 Robert McGibbon
 #ifndef TUNGSTEN_UTILITIES_H
 #define TUNGSTEN_UTILITIES_H
 #include <fstream>
@@ -18,12 +19,16 @@ typedef struct {
 
 
 /**
- * Boot up a context from a serialized system and integrator
+ * Boot up an OpenMM context from a serialized System and Integrator. Reports
+ * some output to stdout, and resets the random number seeds to ensure that
+ * multiple trajectories initialized on different MPI ranks diverge from
+ * each other.
  */
 OpenMM::Context* createContext(std::ifstream& systemXml, std::ifstream& integratorXml, const std::string& platformName);
 
 /**
- * Convenience method to exit from MPI
+ * Convenience method to exit the process, printing an error message on the
+ * MPI root node.
  */
 void exitWithMessage(const std::string& fmt, ...);
 
@@ -44,12 +49,13 @@ ConfigOpts parseConfigFile(const char* configFileName);
 bool hasPeriodicBoundaries(const OpenMM::System& system);
 
 /**
- * Log the uname to stdout
+ * Print a description of this system, like a linux `uname`, to stdout
  */
 void printUname(void);
 
 /**
- * Reset the random seed for any stochastic elements (mc barostat, langevin integrator, etc)
+ * Reset the random seed for any stochastic elements (mc barostat, 
+ * langevin integrator, etc) in the simulation.
  */
 void resetRandomNumberSeed(OpenMM::System* system, OpenMM::Integrator* integrator);
 

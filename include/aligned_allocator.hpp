@@ -1,3 +1,9 @@
+// Copyright 2013 Robert McGibbon, Microsoft Corporation.
+// Allocator for aligned memory, for STL objects. This code is
+// copied from the link below, with slight modifications to substitute in
+// posix_memalign.
+// http://blogs.msdn.com/b/vcblog/archive/2008/08/28/the-mallocator.aspx
+
 #ifndef _ALIGNED_ALLOCATOR_H
 #define _ALIGNED_ALLOCATOR_H
 #include <stddef.h>  // Required for size_t and ptrdiff_t and NULL

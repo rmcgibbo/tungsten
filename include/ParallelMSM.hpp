@@ -1,3 +1,4 @@
+// Copyright 2013 Robert McGibbon
 #ifndef TUNGSTEN_PARALLELMSM_H
 #define TUNGSTEN_PARALLELMSM_H
 #include <vector>

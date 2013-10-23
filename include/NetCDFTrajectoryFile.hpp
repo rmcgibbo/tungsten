@@ -1,3 +1,4 @@
+// Copyright 2013 Robert McGibbon
 #ifndef TUNGSTEN_NETCDFTRAJECTORY_FILE_H_
 #define TUNGSTEN_NETCDFTRAJECTORY_FILE_H_
 #include <stddef.h>
@@ -130,7 +131,7 @@ public:
     }
     
     /**
-     * 
+     * Check whether the netcdf file handle is valid.
      */
     bool isvalid(void) const {
         return (ncid_ != NC_INVALID);

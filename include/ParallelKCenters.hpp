@@ -1,3 +1,4 @@
+// Copyright 2013 Robert McGibbon
 #ifndef TUNGSTEN_PARALLELKCENTERS_H
 #define TUNGSTEN_PARALLELKCENTERS_H
 #include <vector>
@@ -10,10 +11,8 @@ namespace Tungsten {
 class ParallelKCenters {
 public:
     /**
-     * Run k-centers RMSD clustering in parallel over MPI. Each MPI rank is
-     * associated with a single trajectory. EACH TRAJECTORY MUST BE THE
-     * SAME LENGTH. This is currently assumed, but unchecked. It could
-     * be circumvented with a more clever parallel reductio step.
+     * Initialize k-centers RMSD clustering in parallel over MPI. Each MPI
+     * rank is associated with a single trajectory.
      *
      * @param ncTraj        The trajectory that that this rank loads from
      * @param stride        Load only every stride-th frame, to save memory
@@ -27,25 +26,50 @@ public:
      * Compute the RMSDs from one conformation that may be located on ANY
      * MPI rank to all of the conformations on THIS mpi rank. If any of
      * the positions contain NANs in them, the distance is reported as zero.
-     * this is good for kcenters because it ensures that these conformations
-     * are never chosen as a center.
+     * (This is good for kcenters because it ensures that these conformations
+     * are never chosen as a center.)
      *
-     * @param rank
-     * @param index
+     * @param rank    The index of the node (MPI rank) on which the reference
+     *                conformation resides
+     * @param index   The index of the reference conformation on its node.
      *
-     * @return
+     * @return        A vector of distances, of length equal to the number of 
+     *                frames owned by THIS node, giving the distance from the
+     *                reference conformation to all of THIS node's conformations.
      */
     std::vector<float> getRmsdsFrom(int rank, int index) const;
 
     /**
+     * Run k-centers clustering
      *
-     *
+     * @param rmsdCutoff    New state will be added until the distance
+     *                      from every conformation to its assigned cluster
+     *                      center is less than this cutoff.
+     * @param seedRank      The zeroth cluster must be picked arbirarily for
+     *                      k-centers. seedRank and seedIndex specify it.
+     * @param seedIndex     The zeroth cluster must be picked arbirarily for
+     *                      k-centers. seedRank and seedIndex specify it.
      */
     void cluster(double rmsdCutoff, int seedRank, int seedIndex);
 
+    /**
+     * Get the assignments for each conformation, the global index of the
+     * conformation which serves as the center of the cluster to which each
+     * of the frames owned by this node are assigned
+     *
+     */
     std::vector<gindex> getAssignments() {
         return assignments_;
     }
+q
+    /**
+     * Get the global index of the conformations which are serving as cluster
+     * centers. These are the unique elements of getAssignments(), which the
+     * cavait that the uniqueness is over all of the MPI ranks. A given rank
+     * might not have any assignments to one of the clusters, but that
+     * cluster will still be listed in the output of getCenters(), which
+     * is identical on every MPI rank.
+     */
     std::vector<gindex> getCenters() {
         return centers_;
     }

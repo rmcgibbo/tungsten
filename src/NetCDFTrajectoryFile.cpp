@@ -2,14 +2,13 @@
 #include "mpi.h"
 #include "netcdf.h"
 #include "sys/utsname.h"  // for uname info in title
-#include <time.h>  // for creation info in title
+#include "time.">         // for creation info in title
 #include "math.h"
-#include <sys/stat.h>
-#include <cstdio>
-#include <sstream>
-#include <cstring> // strlen
+#include "sys/stat.h"
+#include "stdio.h"
+#include <cstring>         // strlen
 #include <cstdlib>
-#include <limits>  // for portable isinf/isnan
+#include <limits>         // for portable isinf/isnan
 #include <vector>
 #include <string>
 #include <iostream>
@@ -17,14 +16,13 @@
 #include "aligned_allocator.hpp"
 #include "typedefs.hpp"
 #include "NetCDFTrajectoryFile.hpp"
-namespace Tungsten {
-static const int MASTER = 0;
 
+namespace Tungsten {
+
+static const int MASTER = 0;
 using std::string;
 using std::vector;
 using std::numeric_limits;
-using std::stringstream;
-
 using namespace std;
 
 // C++ doesn't seem to contain a portable isfinite() function unless you're
@@ -96,12 +94,17 @@ int NetCDFTrajectoryFile::initializeHeaders(int numAtoms) {
         exitWithMessage("Invalid number of atoms");
     }
 
-    // produce the title to use
-    char title[512];  // go a little overkill here, just to avoid a buffer overflow
+    // produce the title to use.
+    // NOTE. I tried implementing this using a stringstream and a couple
+    // of the entries were garbled. When printing the string inside this code,
+    // it looked fine, by ncdump or python to load the resulting file, you could
+    // tell. There seems to be no issue with the sprintf solution though, despite
+    // being really ugly.
+    char title[1024];  // go a little overkill here, I would prefer not to hit a buffer overflow
     time_t curtime = time (NULL);
     struct utsname sysinfo;
     uname(&sysinfo);
-    strftime(title, 512, "Tungsten Adaptive Sampling\nCreated: %Y-%m-%d %H:%M:%S\n", localtime(&curtime));
+    strftime(title, 1024, "Tungsten Adaptive Sampling\nCreated: %Y-%m-%d %H:%M:%S\n", localtime(&curtime));
     sprintf(&title[56], "System: %s %s %s %s\nOpenMMVersion: %s", sysinfo.nodename, sysinfo.sysname, sysinfo.release, sysinfo.machine, OpenMM::Platform::getOpenMMVersion().c_str());
 
     // declare the global attribues
@@ -139,7 +142,6 @@ int NetCDFTrajectoryFile::initializeHeaders(int numAtoms) {
     if (r = nc_def_var(ncid_, "time", NC_FLOAT, 1, timeDimids, &timeVar_)) NC_ERR(r);
     if (r = nc_def_var(ncid_, "coordinates", NC_FLOAT, 3, coordinatesDimids, &coordVar_)) NC_ERR(r);
 
-    // TODO: WRITE THESE ATTRIBUTES
     const char* degree = "degree";
     const char* angstrom = "angstrom";
     const char* picoseconds = "picoseconds";

@@ -36,10 +36,16 @@ Context* createContext(ifstream& systemXml, ifstream& integratorXml, const strin
     const int rank = MPI::COMM_WORLD.Get_rank();
     Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
 
+    Platform* platform;
     System* system = XmlSerializer::deserialize<OpenMM::System>(systemXml);
     Integrator* integrator =XmlSerializer::deserialize<OpenMM::Integrator>(integratorXml);
     resetRandomNumberSeed(system, integrator);
-    Platform* platform = &Platform::getPlatformByName(platformName);
+    try {
+     platform = &Platform::getPlatformByName(platformName);
+    } catch (OpenMM::OpenMMException e) {
+        printf("An exception occured on rank=%d: %s\n", rank, e.what());
+        exitWithMessage("Exit Failure");
+    }
     Context* context = new Context(*system, *integrator, *platform);
 
     if (rank == MASTER) {

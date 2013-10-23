@@ -30,22 +30,19 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = "/Applications/CMake 2.8-10.app/Contents/bin/cmake"
+CMAKE_COMMAND = /usr/bin/cmake
 
 # The command to remove a file.
-RM = "/Applications/CMake 2.8-10.app/Contents/bin/cmake" -E remove -f
-
-# Escaping for special characters.
-EQUALS = =
+RM = /usr/bin/cmake -E remove -f
 
 # The program to use to edit the cache.
-CMAKE_EDIT_COMMAND = "/Applications/CMake 2.8-10.app/Contents/bin/ccmake"
+CMAKE_EDIT_COMMAND = /usr/bin/ccmake
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/rmcgibbo/projects/tungsten
+CMAKE_SOURCE_DIR = /home/rmcgibbo/projects/tungsten
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/rmcgibbo/projects/tungsten
+CMAKE_BINARY_DIR = /home/rmcgibbo/projects/tungsten
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -53,7 +50,7 @@ CMAKE_BINARY_DIR = /Users/rmcgibbo/projects/tungsten
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
-	"/Applications/CMake 2.8-10.app/Contents/bin/ccmake" -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	/usr/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -63,7 +60,7 @@ edit_cache/fast: edit_cache
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	"/Applications/CMake 2.8-10.app/Contents/bin/cmake" -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	/usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
 # Special rule for the target rebuild_cache
@@ -72,9 +69,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/rmcgibbo/projects/tungsten/CMakeFiles /Users/rmcgibbo/projects/tungsten/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/rmcgibbo/projects/tungsten/CMakeFiles /home/rmcgibbo/projects/tungsten/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/rmcgibbo/projects/tungsten/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/rmcgibbo/projects/tungsten/CMakeFiles 0
 .PHONY : all
 
 # The main clean target

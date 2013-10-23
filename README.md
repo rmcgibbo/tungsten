@@ -26,3 +26,7 @@ If you don't already have them, you can install netCDF and OpenMPI on an ubuntu 
 ```
 sudo apt-get install ibopenmpi-dev openmpi-bin libnetcdf-dev
 ```
+
+If you're building netCDF from source for this application, note that tungsten does not
+require netCDF4/HDF5, so you can pass `--disable-netcdf-4` to netCDF's `configure` script
+if you like. This can make the build a little easier.

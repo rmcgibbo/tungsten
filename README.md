@@ -58,7 +58,7 @@ numRounds = 2
 numStepsPerRound = 500
 numStepsPerWrite = 50
 outputRootPath = data/
-kcentersRmsdIndicesFile = data/AtomIndices.date
+kcentersRmsdIndicesFile = data/AtomIndices.indx
 kcentersRmsdCutoff = 0.005
 openmmPlatform = OpenCL
 ```

@@ -59,7 +59,7 @@ int run(int argc, char* argv[], double* totalMDTime) {
     const int rank = MPI::COMM_WORLD.Get_rank();
     // Parse the command line
     if (argc != 5) {
-        printf("usage: [mpirun] %s <system.xml> <integrator.xml> <state.xml> <config.ini>\n", argv[0]);
+        printfM("usage: [mpirun] %s <system.xml> <integrator.xml> <state.xml> <config.ini>\n", argv[0]);
         MPI::Finalize();
         exit(0);
     }

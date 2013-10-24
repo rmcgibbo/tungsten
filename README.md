@@ -1,6 +1,8 @@
 Tungsten
 ========
 
+Overview
+--------
 Tungsten is an application, based on the OpenMM molecular dynamics library,
 for Markov state model accelerated molecular simulation. Tungsten runs a set
 of independent MD simulations in parallel over MPI. With a certain frequency,

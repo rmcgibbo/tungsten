@@ -20,7 +20,8 @@ are OpenMM xml files, `system.xml`, `integrator.xml`, and `state.xml`, which
 specify the complete Hamiltonian, integrator, and initial conditions for
 the simulation. These files can be constructed from an RCSB PDB, amber
 incprd/prmtop, gromacs gro/top, or desmond dms file using the OpenMM python
-app.
+app. You can modify and use the script `exampleBuildTungstenXML.py`, included
+with the tungsten source.
 
 `tungsten` also requires a short configuration file, in a simple key=value
 format to specify, among other things, the frequency of clustering, the

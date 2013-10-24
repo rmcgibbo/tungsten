@@ -24,6 +24,7 @@
 #define TUNGSTEN_UTILITIES_H
 #include "mpi.h"
 #include "time.h"
+#include <iostream>
 #include <fstream>
 #include <string>
 #include "OpenMM.h"

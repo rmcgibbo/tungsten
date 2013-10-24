@@ -93,7 +93,7 @@ correctly.
 
 In tungsten, each rank associates itself with a single output file that it
 reads and writes to exclusively. These output files are AMBER compatible
-NetCDF trajectory files (you can load them with VMD, etc), and numbered by the
+NetCDF trajectory files (you can load them with VMD, etc), and numbered by
 rank in a `trj-%05d.nc` pattern (i.e. `trj-00001.nc`,` trj-00002.nc`, etc).
 The trajectory file stores the positions, periodic box dimensions, and
 simulation time. Velocities and forces are not stored. When a round of

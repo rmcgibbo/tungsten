@@ -31,7 +31,7 @@ parallel processors using
 
 ```mpirun -np <N> tungsten system.xml integrator.xml state.xml config.ini```
 
-The configuration options for the ini file (last command line option)
+The configuration options for the `config.ini` file (last command line option)
 are available:
 
 ```

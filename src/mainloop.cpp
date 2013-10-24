@@ -167,6 +167,6 @@ int main(int argc, char* argv[]) {
     printPerformance(totalMDTime, endWallTime, startWallTime);
     MPI::COMM_WORLD.Reduce(&totalMDTime, &aggegateMDTime, 1, MPI_DOUBLE, MPI_SUM, MASTER);
     printfM("Total Sampling: %.3f ns\n\n", aggegateMDTime/1000.0);
-    printfM("Starfleet Out.\n");
+    printfM("Starfleet out.\n");
     MPI::Finalize();
 }

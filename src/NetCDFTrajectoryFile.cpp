@@ -138,7 +138,7 @@ int NetCDFTrajectoryFile::initializeHeaders(int numAtoms) {
     const char* program = "Tungsten";
     const char* programVersion = "0.1";
     const char* Conventions = "AMBER";
-    const char* ConventionsVersion = "1.0";
+    const char* ConventionVersion = "1.0";
 
     // add the global attributes
     if (r = nc_put_att_text(ncid_, NC_GLOBAL, "title", strlen(title)+1, title)) NC_ERR(r);
@@ -146,7 +146,7 @@ int NetCDFTrajectoryFile::initializeHeaders(int numAtoms) {
     if (r = nc_put_att_text(ncid_, NC_GLOBAL, "program", strlen(program)+1, program)) NC_ERR(r);
     if (r = nc_put_att_text(ncid_, NC_GLOBAL, "programVersion", strlen(programVersion)+1, programVersion)) NC_ERR(r);
     if (r = nc_put_att_text(ncid_, NC_GLOBAL, "Conventions", strlen(Conventions)+1, Conventions)) NC_ERR(r);
-    if (r = nc_put_att_text(ncid_, NC_GLOBAL, "ConventionsVersion", strlen(ConventionsVersion)+1, ConventionsVersion)) NC_ERR(r);
+    if (r = nc_put_att_text(ncid_, NC_GLOBAL, "ConventionVersion", strlen(ConventionVersion)+1, ConventionVersion)) NC_ERR(r);
 
     if (r = nc_def_dim(ncid_, "frame", NC_UNLIMITED, &frameDim_)) NC_ERR(r);
     if (r = nc_def_dim(ncid_, "spatial", 3, &spatialDim_)) NC_ERR(r);

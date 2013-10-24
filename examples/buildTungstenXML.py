@@ -1,5 +1,5 @@
 from __future__ import print_function
-from os.path import exists
+from os.path import exists, join, dirname
 try:
     from simtk.openmm.app import *
     from simtk.openmm import *
@@ -16,7 +16,7 @@ except ImportError as err:
 #  for details on the available options                                       #
 #*****************************************************************************#
 
-input_pdb = 'data/input.pdb'
+input_pdb = join(dirname(__file__), 'input.pdb')
 pdb = PDBFile(input_pdb)
 forcefield = ForceField('amber99sb.xml', 'tip3p.xml')
 system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME,

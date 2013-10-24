@@ -93,7 +93,7 @@ correctly.
 
 In tungsten, each rank associates itself with a single output file that it
 reads and writes to exclusively. These output files are AMBER compatible
-NetCDF trajectory files (you can load them with VMD, etc), and numbered by
+netCDF trajectory files (you can load them with VMD, etc), and numbered by
 rank in a `trj-%05d.nc` pattern (i.e. `trj-00001.nc`,` trj-00002.nc`, etc).
 The trajectory file stores the positions, periodic box dimensions, and
 simulation time. Velocities and forces are not stored. When a round of
@@ -130,19 +130,21 @@ Tungsten has three dependencies.
 - [OpenMM](https://simtk.org/home/openmm) for running simulations.
 - [netCDF](http://www.unidata.ucar.edu/software/netcdf/docs/index.html) for
 saving and loading trajectories to disk (tungsten writes AMBER
-NetCDF-compatible trajectories).
+netCDF-compatible trajectories).
 - An [MPI](http://en.wikipedia.org/wiki/Message_Passing_Interface)
 implementation for message passing and intra-processor coordination.
 
-Tungsten's build system should be pretty good about finding OpenMM and netcdf
-on your system, if they're installed. For MPI, it uses the `mpicc` and
-`mpicxx` compiler wrappers, which should be installed by any competent MPI
-distribution.
+Both MPI and netCDF are widely used within high-performance scientific
+computing and should be installed by default or availble through modules on
+any computer cluster or supercomputer configured for scientific users.
+Tungsten's build system should be pretty good about finding OpenMM, netCDF
+and MPI on your system, if they're installed. For MPI, it uses the `mpicc`
+and `mpic++` compiler wrappers, which are part of all MPI implementations.
 
-If you don't already have them, you can install netCDF and OpenMPI on an
+But if you don't already have them, you can install netCDF and OpenMPI on an
 Ubuntu box with `sudo apt-get install ibopenmpi-dev openmpi-bin
-libnetcdf-dev`. It should be basically the same on any other platform with a
-package manager.
+libnetcdf-dev`. It should be basically the same on any other *nix platform
+with a package manager.
 
 Note: If you're building netCDF from source for this application, note that
 tungsten does not require netCDF4 / HDF5, so you can pass `--disable-netcdf-4`

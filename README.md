@@ -4,14 +4,14 @@ Tungsten
 Overview
 --------
 Tungsten is an application, based on the OpenMM molecular dynamics library,
-for Markov state model accelerated molecular simulation. Tungsten runs a set
-of independent MD simulations in parallel over MPI. With a certain frequency,
-the simulations pause and the nodes collaborativly build a Markov state model
-(see, for example Bowman et. al, *J. Chem. Theory Comput.*, **2010**, 6 (3),
-787). The conformational states that have fewest incomming transitions are
-then scattered back to the nodes for further simulation, ala. Weber and
-Pande's "min-counts sampling" (*J. Chem. Theory Comput.*, **2011**, 7 (10),
-3405.).
+for high performance, GPU-based, Markov state model accelerated molecular
+simulation. Tungsten runs a set of independent MD simulations in parallel
+over MPI. With a certain frequency, the simulations pause and the nodes
+collaborativly build a Markov state model (see, for example Bowman et. al,
+*J. Chem. Theory Comput.*, **2010**, 6 (3), 787). The conformational states
+that have fewest incomming transitions are then scattered back to the nodes
+for further simulation, ala. Weber and Pande's "min-counts sampling" (*J.
+Chem. Theory Comput.*, **2011**, 7 (10), 3405.).
 
 Usage
 -----

@@ -54,35 +54,15 @@ static const int MASTER = 0;  // mpi master node, for all terminal IO
 static const int FILENAME_NUMBER_WIDTH = 5;
 
 
-void printPerformance(double mdTime, time_t simEndWallTime, time_t simStartWallTime) {
-    const int size = MPI::COMM_WORLD.Get_size();
-    const int rank = MPI::COMM_WORLD.Get_rank();
-    static const double SEC_PER_DAY = 86400.0;
-    // number of simulated ns per day of wall time
-    double nsPerDay = (mdTime/1000.0) / (difftime(simEndWallTime, simStartWallTime)/SEC_PER_DAY);
-    vector<double> recvBuffer(size);
-    MPI::COMM_WORLD.Gather(&nsPerDay, 1, MPI_DOUBLE, &recvBuffer[0], 1, MPI_DOUBLE, MASTER);
-    if (rank == MASTER) {
-        double sum;
-        for (int i = 0; i < size; i++)
-            sum += recvBuffer[i];
-        double mean = sum / size;
-        double sumSquare = 0;
-        for (int i = 0; i < size; i++)
-            sumSquare += (recvBuffer[i] - mean)*(recvBuffer[i] - mean);
-        double stdDev = sqrt(sumSquare / size);
-        
-        printf("%.2f +/- %.2f ns/day/node\n", mean, stdDev);
-        printf("Aggregate: %.2f ns/day\n", sum);
-    }
-}
-
 int run(int argc, char* argv[], double* totalMDTime) {
     const int size = MPI::COMM_WORLD.Get_size();
     const int rank = MPI::COMM_WORLD.Get_rank();
     // Parse the command line
-    if (argc != 5)
-        exitWithMessage("usage: %s <system.xml> <integrator.xml> <state.xml> <config.ini>\n", argv[0]);
+    if (argc != 5) {
+        printf("usage: [mpirun] %s <system.xml> <integrator.xml> <state.xml> <config.ini>\n", argv[0]);
+        MPI::Finalize();
+        exit(0);
+    }
 
     printUname();
 
@@ -113,10 +93,11 @@ int run(int argc, char* argv[], double* totalMDTime) {
     NetCDFTrajectoryFile file(fileName, "w", numAtoms);
 
     for (int round = 0; round < opts.numRounds; round++) {
-        printfM("\nRunning Adaptive Sampling Round %d\n", round+1);
+        printfM("\n==================================\n");
+        printfM("Running Adaptive Sampling Round %d\n", round+1);
         printfM("==================================\n\n");
         file.write(context->getState(State::Positions, isPeriodic));
-        
+
         time_t roundStartWallTime = time(NULL);
         for (int step = 0; step < opts.numStepsPerRound; step += opts.numStepsPerWrite) {
             integrator.step(opts.numStepsPerWrite);
@@ -133,15 +114,14 @@ int run(int argc, char* argv[], double* totalMDTime) {
 
         // set up for the next round
         // Run clustering with a strude of 1
+
         ParallelKCenters clusterer(file, 1, opts.kcentersRmsdIndices);
         clusterer.cluster(opts.kcentersRmsdCutoff, 0, 0);
-        ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters());
-        gindex newConformation = markovModel.scatterMinCountStates();
-        
         printfM("Scattering new starting min-counts starting confs to each rank\n");
         printfM("--------------------------------------------------------------\n");
+        ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters());
+        gindex newConformation = markovModel.scatterMinCountStates();
         printfAOrd("Rank %d: received frame %d from rank %d\n", rank, newConformation.frame, newConformation.rank);
-        printfM("\n");
 
         PositionsAndPeriodicBox s = file.loadNonlocalStateMPI(newConformation.rank, newConformation.frame);
         context->setPositions(s.positions);
@@ -158,7 +138,7 @@ int main(int argc, char* argv[]) {
     MPI::Init(argc, argv);
     const int rank = MPI::COMM_WORLD.Get_rank();
     if (rank == MASTER) {
-        printf("Tungsten: parallel Markov state model acceleraed molecular dynamics\n\n");
+        printf("Tungsten: Parallel Markov State Model Acceleraed Molecular Dynamics\n\n");
         printf("Copyright (C) 2013 Stanford University. This program\n");
         printf("comes with ABSOLUTELY NO WARRANTY. Tungsten is free\n");
         printf("software, and you are welcome to redistribute it under\n");
@@ -180,7 +160,7 @@ int main(int argc, char* argv[]) {
         fflush(stderr);
         MPI::COMM_WORLD.Abort(EXIT_FAILURE);
     }
-    
+
     time_t endWallTime = time(NULL);
     printfM("\nOverall Performance\n");
     printfM("===================\n");

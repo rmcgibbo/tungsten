@@ -1,6 +1,12 @@
 Tungsten
 ========
 
+Overview
+--------
+
+Usage
+-----
+
 Installation
 ------------
 Tungsten is a single binary, built with cmake build system. If you don't already
@@ -42,9 +48,3 @@ implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Public License for more details. You should have received a copy of the GNU Lesser General Public
 License along with this Module; if not, write to the Free Software Foundation, Inc., 51 Franklin St,
 Fifth Floor, Boston, MA 02110-1301 USA.
-
-Tungsten also incorporates CSPARSE: a Concise Sparse matrix package, copyright (c) 2006, Timothy A.
-Davis. http://www.cise.ufl.edu/research/sparse/CSparse, which is licensed individually under
-the GNU Lesser General Public License, version 2.1 or later, the "inih" library, copyright (c)
-2009, Brush Technology, and distributed under the New BSD license, and "irmsd" rritten by Imran
-S. Haque copyright (c) 2011 Stanford University and released under the traditional BSD.

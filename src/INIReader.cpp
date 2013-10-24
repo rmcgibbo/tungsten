@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <cstdlib>
 #include "ini.h"
 #include "INIReader.h"

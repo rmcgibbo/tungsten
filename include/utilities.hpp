@@ -22,9 +22,10 @@
 
 #ifndef TUNGSTEN_UTILITIES_H
 #define TUNGSTEN_UTILITIES_H
+#include "mpi.h"
+#include "time.h"
 #include <fstream>
 #include <string>
-#include "mpi.h"
 #include "OpenMM.h"
 namespace Tungsten {
 
@@ -63,6 +64,14 @@ int printfM(const std::string& fmt, ...);
  * to the terminal ordered (first rank 0, then 1, etc)
  */
 int printfAOrd(const std::string& format, ...);
+
+/**
+ * Calculate and print the performance of an MD simulation
+ * from the elapsed simulation time on each node (mdTime)
+ * and the elapsed wall time (startWallTime / endWallTime)
+ */
+void printPerformance(double mdTime, time_t endWallTime,
+                      time_t startWallTime);
 
 /**
  * Parse the config file

@@ -110,8 +110,9 @@ int printfAOrd(const string& format, ...) {
     va_list args;
     va_start(args, format);
     int r;
-    MPI::COMM_WORLD.Barrier();
     fflush(stdout);
+    MPI::COMM_WORLD.Barrier();
+
     for (int i = 0; i < size; i++) {
         MPI::COMM_WORLD.Barrier();
         if (i == rank)
@@ -123,6 +124,31 @@ int printfAOrd(const string& format, ...) {
     va_end(args);
     return r;
 }
+
+
+void printPerformance(double mdTime, time_t endWallTime, time_t startWallTime) {
+    const int size = MPI::COMM_WORLD.Get_size();
+    const int rank = MPI::COMM_WORLD.Get_rank();
+    static const double SEC_PER_DAY = 86400.0;
+    // number of simulated ns per day of wall time
+    double nsPerDay = (mdTime/1000.0) / (difftime(endWallTime, startWallTime)/SEC_PER_DAY);
+    vector<double> recvBuffer(size);
+    MPI::COMM_WORLD.Gather(&nsPerDay, 1, MPI_DOUBLE, &recvBuffer[0], 1, MPI_DOUBLE, MASTER);
+    if (rank == MASTER) {
+        double sum;
+        for (int i = 0; i < size; i++)
+            sum += recvBuffer[i];
+        double mean = sum / size;
+        double sumSquare = 0;
+        for (int i = 0; i < size; i++)
+            sumSquare += (recvBuffer[i] - mean)*(recvBuffer[i] - mean);
+        double stdDev = sqrt(sumSquare / size);
+
+        printf("%.2f +/- %.2f ns/day/node\n", mean, stdDev);
+        printf("Aggregate: %.2f ns/day\n", sum);
+    }
+}
+
 
 ConfigOpts parseConfigFile(const char* configFileName) {
     INIReader reader(configFileName);

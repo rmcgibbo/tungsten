@@ -20,9 +20,10 @@
 // Author: Robert McGibbon
 // Contributors:
 
-#include <mpi.h>
-#include <omp.h>
-#include <cmath>
+#include "mpi.h"
+#include "omp.h"
+#include "time.h"
+#include <math.h>
 #include <cstdlib>
 #include <limits>
 #include <algorithm>    // std::copy
@@ -95,7 +96,7 @@ ParallelKCenters::ParallelKCenters(const NetCDFTrajectoryFile& ncTraj,
     : stride_(stride)
     , rank_(MPI::COMM_WORLD.Get_rank())
     , size_(MPI::COMM_WORLD.Get_size()) {
-    atomIndices_ = vector<int>(atomIndices); // copy
+    atomIndices_ = vector<int>(atomIndices);  // copy
     // If atomIndices is empty, we use ALL of the atoms in the trajectory
     if (atomIndices_.size() == 0)
         for (int i = 0; i < ncTraj.getNumAtoms(); i++)
@@ -121,6 +122,7 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
 
     printfM("\nParallel KCenters Clustering\n");
     printfM("----------------------------\n");
+    time_t startTime = time(NULL);
 
     for (int i = 0; true; i++) {
         triplet max = maxLocAllReduce(distances);
@@ -154,8 +156,10 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
         fflush(stdout);
         #endif
     }
+    time_t endTime = time(NULL);
+    double elapsed = difftime(endTime, startTime);
 
-    printfM("LOCATED k=%lu states\n\n", centers_.size());
+    printfM("LOCATED k=%lu states (t=%.2f s)\n\n", centers_.size(), elapsed);
 }
 
 

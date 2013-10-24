@@ -127,7 +127,7 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
 
         if (i > 0 && i < MAX_KCENTERS_LINES)
             // don't print when the
-            printfM("Finishing when %.4f < %.4f    ", max.value, rmsdCutoff);
+            printfM("Finishing when %.4f nm < %.4f nm   ", max.value, rmsdCutoff);
         if (max.value < rmsdCutoff)
             break;
 

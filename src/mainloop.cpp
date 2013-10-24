@@ -173,10 +173,10 @@ int main(int argc, char* argv[]) {
     } catch (std::exception e) {
         fflush(stdout);
         fflush(stderr);
-        fprintf(stderr, "============================");
-        fprintf(stderr, "An exception was triggered on RANK=%d", rank);
+        fprintf(stderr, "============================\n");
+        fprintf(stderr, "An exception was triggered on RANK=%d\n", rank);
         std::cerr << e.what() << std::endl;
-        fprintf(stderr, "============================");
+        fprintf(stderr, "============================\n");
         fflush(stderr);
         MPI::COMM_WORLD.Abort(EXIT_FAILURE);
     }

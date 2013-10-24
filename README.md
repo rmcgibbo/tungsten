@@ -39,13 +39,13 @@ numStepsPerRound:int            number of MD steps in each round, between cluste
 numStepsPerWrite:int            trajectory save frequency, in steps
 outputRootPath:path             directory where output trajectories are saved
 kcentersRmsdIndicesFile:path    path to a space or newline separated file listing the
-                                   zero-based indices of the atoms to use in the rmsd
-                                   computation, for clustering.
+                                zero-based indices of the atoms to use in the rmsd
+                                computation, for clustering.
 kcentersRmsdCutoff:float        RMSD distance cutoff for clustering, in units of
-                                   nanometers. A lower cutoff will result in more
-                                   numerous, smaller conformational states.
+                                nanometers. A lower cutoff will result in more
+                                numerous, smaller conformational states.
 openmmPlatform:string           OpenMM platform to run the simulations. May be one of
-                                   CUDA, OpenCL, Reference, etc.
+                                CUDA, OpenCL, Reference, etc.
 ```
 
 For example, the following is a valid tungsten config

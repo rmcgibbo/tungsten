@@ -36,22 +36,50 @@
 #include "ParallelKCenters.hpp"
 #include "ParallelMSM.hpp"
 
-#define MASTER 0
-#define WIDTH 5    // used to create the output format
 
 using std::string;
 using std::vector;
 using std::ifstream;
 using std::fstream;
 using std::stringstream;
+using OpenMM::Context;
+using OpenMM::State;
+using OpenMM::Integrator;
+using OpenMM::System;
+using OpenMM::XmlSerializer;
 using namespace Tungsten;
 
+static const int MASTER = 0;  // mpi master node, for all terminal IO
+// the output trajectories will be trj-00001.nc, with a width given here
+static const int FILENAME_NUMBER_WIDTH = 5;
 
-int main(int argc, char* argv[]) {
-    MPI::Init(argc, argv);
+
+void printPerformance(double mdTime, time_t simEndWallTime, time_t simStartWallTime) {
     const int size = MPI::COMM_WORLD.Get_size();
     const int rank = MPI::COMM_WORLD.Get_rank();
+    static const double SEC_PER_DAY = 86400.0;
+    // number of simulated ns per day of wall time
+    double nsPerDay = (mdTime/1000.0) / (difftime(simEndWallTime, simStartWallTime)/SEC_PER_DAY);
+    vector<double> recvBuffer(size);
+    MPI::COMM_WORLD.Gather(&nsPerDay, 1, MPI_DOUBLE, &recvBuffer[0], 1, MPI_DOUBLE, MASTER);
+    if (rank == MASTER) {
+        double sum;
+        for (int i = 0; i < size; i++)
+            sum += recvBuffer[i];
+        double mean = sum / size;
+        double sumSquare = 0;
+        for (int i = 0; i < size; i++)
+            sumSquare += (recvBuffer[i] - mean)*(recvBuffer[i] - mean);
+        double stdDev = sqrt(sumSquare / size);
+        
+        printf("%.2f +/- %.2f ns/day/node\n", mean, stdDev);
+        printf("Aggregate: %.2f ns/day\n", sum);
+    }
+}
 
+int run(int argc, char* argv[], double* totalMDTime) {
+    const int size = MPI::COMM_WORLD.Get_size();
+    const int rank = MPI::COMM_WORLD.Get_rank();
     // Parse the command line
     if (argc != 5)
         exitWithMessage("usage: %s <system.xml> <integrator.xml> <state.xml> <config.ini>\n", argv[0]);
@@ -64,9 +92,9 @@ int main(int argc, char* argv[]) {
     // Create the context from the input files
     ifstream systemXml(argv[1]);
     ifstream integratorXml(argv[2]);
-    OpenMM::Context* context =  createContext(systemXml, integratorXml, opts.openmmPlatform);
-    OpenMM::Integrator& integrator = context->getIntegrator();
-    const OpenMM::System& system = context->getSystem();
+    Context* context =  createContext(systemXml, integratorXml, opts.openmmPlatform);
+    Integrator& integrator = context->getIntegrator();
+    const System& system = context->getSystem();
     int numAtoms = system.getNumParticles();
     bool isPeriodic = hasPeriodicBoundaries(system);
     const double temperature = getTemperature(system, integrator);
@@ -75,55 +103,90 @@ int main(int argc, char* argv[]) {
 
     // Set the initial state
     fstream stateXml(argv[3]);
-    OpenMM::State* state = OpenMM::XmlSerializer::deserialize<OpenMM::State>(stateXml);
+    State* state = XmlSerializer::deserialize<State>(stateXml);
     context->setState(*state);
 
     // Create the trajectory for our work on this one
     stringstream s;
-    s <<  opts.outputRootPath << "/trj-" << std::setw(WIDTH) << std::setfill('0') << rank << ".nc";
+    s <<  opts.outputRootPath << "/trj-" << std::setw(FILENAME_NUMBER_WIDTH) << std::setfill('0') << rank << ".nc";
     string fileName = s.str();
     NetCDFTrajectoryFile file(fileName, "w", numAtoms);
 
     for (int round = 0; round < opts.numRounds; round++) {
-        printfM("\nBeginning Round %d\n===================\n", round);
-
-        file.write(context->getState(OpenMM::State::Positions, isPeriodic));
+        printfM("\nRunning Adaptive Sampling Round %d\n", round+1);
+        printfM("==================================\n\n");
+        file.write(context->getState(State::Positions, isPeriodic));
+        
+        time_t roundStartWallTime = time(NULL);
         for (int step = 0; step < opts.numStepsPerRound; step += opts.numStepsPerWrite) {
-            if (rank == MASTER)
-                printf("#");
-            try {
-                integrator.step(opts.numStepsPerWrite);
-            } catch (OpenMM::OpenMMException e) {
-                printf("An exception occured on rank=%d: %s\n", rank, e.what());
-                exitWithMessage("Exit Failure");
-            }
-            file.write(context->getState(OpenMM::State::Positions, isPeriodic));
+            integrator.step(opts.numStepsPerWrite);
+            file.write(context->getState(State::Positions, isPeriodic));
+            file.flush();
         }
-        printfM("\n");
-        file.flush();
+        time_t roundEndWallTime = time(NULL);
+        // note, using getTime() here relies on the fact that every round, we
+        // reset the simulation clock to zero.
+        double mdTime = context->getState(0).getTime();
+        printfM("MD Performance: ");
+        printPerformance(mdTime, roundEndWallTime, roundStartWallTime);
+        (*totalMDTime) += mdTime;
 
+        // set up for the next round
         // Run clustering with a strude of 1
         ParallelKCenters clusterer(file, 1, opts.kcentersRmsdIndices);
         clusterer.cluster(opts.kcentersRmsdCutoff, 0, 0);
         ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters());
         gindex newConformation = markovModel.scatterMinCountStates();
+        
+        printfM("Scattering new starting min-counts starting confs to each rank\n");
+        printfM("--------------------------------------------------------------\n");
+        printfAOrd("Rank %d: received frame %d from rank %d\n", rank, newConformation.frame, newConformation.rank);
+        printfM("\n");
 
-        MPI::COMM_WORLD.Barrier();
-        fflush(stdout);
-        printf("New Coordinates on Rank=%d: (%d, %d)\n", rank,
-               newConformation.rank, newConformation.frame);
-
-        PositionsAndPeriodicBox s = file.loadNonlocalStateMPI(
-                                        newConformation.rank, newConformation.frame);
+        PositionsAndPeriodicBox s = file.loadNonlocalStateMPI(newConformation.rank, newConformation.frame);
         context->setPositions(s.positions);
         context->setPeriodicBoxVectors(s.boxA, s.boxB, s.boxC);
-        printfM("Randomizing velocities to T=%.2f\n", temperature);
         context->setVelocitiesToTemperature(temperature);
-        printfM("Setting simulation clock back to 0");
         context->setTime(0.0);
-
-
     }
     delete context;
+}
+
+
+
+int main(int argc, char* argv[]) {
+    MPI::Init(argc, argv);
+    const int rank = MPI::COMM_WORLD.Get_rank();
+    if (rank == MASTER) {
+        printf("Tungsten: parallel Markov state model acceleraed molecular dynamics\n\n");
+        printf("Copyright (C) 2013 Stanford University. This program\n");
+        printf("comes with ABSOLUTELY NO WARRANTY. Tungsten is free\n");
+        printf("software, and you are welcome to redistribute it under\n");
+        printf("certain conditions; see LICENSE.txt for details\n\n");
+    }
+    double totalMDTime = 0;
+    double aggegateMDTime = 0;
+    time_t startWallTime = time(NULL);
+
+    try {
+        run(argc, argv, &totalMDTime);
+    } catch (std::exception e) {
+        fflush(stdout);
+        fflush(stderr);
+        fprintf(stderr, "============================");
+        fprintf(stderr, "An exception was triggered on RANK=%d", rank);
+        std::cerr << e.what() << std::endl;
+        fprintf(stderr, "============================");
+        fflush(stderr);
+        MPI::COMM_WORLD.Abort(EXIT_FAILURE);
+    }
+    
+    time_t endWallTime = time(NULL);
+    printfM("\nOverall Performance\n");
+    printfM("===================\n");
+    printPerformance(totalMDTime, endWallTime, startWallTime);
+    MPI::COMM_WORLD.Reduce(&totalMDTime, &aggegateMDTime, 1, MPI_DOUBLE, MPI_SUM, MASTER);
+    printfM("Total Sampling: %.3f ns\n\n", aggegateMDTime/1000.0);
+    printfM("Starfleet Out.\n");
     MPI::Finalize();
 }

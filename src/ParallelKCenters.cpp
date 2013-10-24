@@ -24,7 +24,8 @@
 #include <omp.h>
 #include <cmath>
 #include <cstdlib>
-#include <cfloat>
+#include <limits>
+#include <algorithm>    // std::copy
 #include <vector>
 #include "utilities.hpp"
 #include "typedefs.hpp"
@@ -32,13 +33,15 @@
 #include "NetCDFTrajectoryFile.hpp"
 #include "ParallelKCenters.hpp"
 #include "theobald_rmsd.h"
-
 namespace Tungsten {
 
 using std::vector;
 using std::pair;
+using std::copy;
 
 static const int MASTER = 0;
+static const int MAX_KCENTERS_LINES = 10;
+
 typedef struct {
     int rank;
     int frame;
@@ -114,20 +117,27 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
     vector<float> distances(numFrames_);
     assignments_.resize(numFrames_);
     centers_.resize(0);
-    fill(distances.begin(), distances.end(), FLT_MAX);
+    fill(distances.begin(), distances.end(), std::numeric_limits<float>::max());
 
     printfM("\nParallel KCenters Clustering\n");
     printfM("----------------------------\n");
 
     for (int i = 0; true; i++) {
         triplet max = maxLocAllReduce(distances);
-        printfM("Finishing when %.4f < %.4f.    ", max.value, rmsdCutoff);
+
+        if (i > 0 && i < MAX_KCENTERS_LINES)
+            // don't print when the
+            printfM("Finishing when %.4f < %.4f    ", max.value, rmsdCutoff);
         if (max.value < rmsdCutoff)
             break;
 
-        gindex newCenter = {max.rank,  max.frame};
-        printfM("Found new center (%d, %d)\n", newCenter.rank, newCenter.frame);
+        if (i > 0 && i < MAX_KCENTERS_LINES)
+            printfM("Found new center (%d, %d)\n", max.rank, max.frame);
+        if (i == MAX_KCENTERS_LINES)
+            printfM("... [truncating output] ...\n\n");
 
+
+        gindex newCenter = {max.rank,  max.frame};
         vector<float> newDistances = getRmsdsFrom(newCenter.rank, newCenter.frame);
         for (int j = 0; j < numFrames_; j++)
             if (newDistances[j] < distances[j]) {
@@ -135,14 +145,17 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
                 assignments_[j] = newCenter;
             }
         centers_.push_back(newCenter);
+        MPI::COMM_WORLD.Barrier();
 
+        #ifdef VERBOSE
         MPI::COMM_WORLD.Barrier();
         printfM("RMSDs to (%d, %d)\n", newCenter.rank, newCenter.frame);
         printMPIVector(distances);
         fflush(stdout);
+        #endif
     }
 
-    printfM("Located k=%lu clusters\n\n", centers_.size());
+    printfM("LOCATED k=%lu states\n\n", centers_.size());
 }
 
 
@@ -173,37 +186,38 @@ void ParallelKCenters::computeTraces() {
 }
 
 
-vector<float> ParallelKCenters::getRmsdsFrom(int rank, int index) const {
-    if (rank >= size_)
+vector<float> ParallelKCenters::getRmsdsFrom(int targetRank, int targetIndex) const {
+    if (targetRank >= size_)
         exitWithMessage("IndexError: No such rank.");
-    if (index >= numFrames_)
-        exitWithMessage("IndexError: No such frame.");
+    if (rank_ == targetRank && targetIndex >= numFrames_)
+        exitWithMessage("IndexError: No such rank.");
+
     int err = 0;
-    float g = traces_[index];
-    float* frame;
+    float g = 0;
+    // we just want to use the same allocator as coordinates_, but you
+    // can't call get_allocator() because the template needs to be
+    // compile time constaint.
+    vector<float, aligned_allocator<float, 4*sizeof(float)> > frame(numPaddedAtoms_*3);
 
-    // Broadcast the frame of interest to all of the nodes
-    if (rank_ != rank) {
-        err = posix_memalign(reinterpret_cast<void**>(&frame), 16,
-                             numPaddedAtoms_*3*sizeof(float));
-        if (err != 0) exitWithMessage("Malloc error");
-    } else
-        frame = const_cast<float*>(&coordinates_[index*numPaddedAtoms_*3]);
+    if (rank_ == targetRank) {
+        // copy appropriate coordinate into the send buffer
+        std::copy(&coordinates_[(targetIndex)*numPaddedAtoms_*3],
+                  &coordinates_[(targetIndex+1)*numPaddedAtoms_*3],
+                  frame.begin());
+        g = traces_[targetIndex];
+    }
 
-
-    MPI::COMM_WORLD.Bcast(frame, numPaddedAtoms_*3, MPI_FLOAT, rank);
-    MPI::COMM_WORLD.Bcast(&g, 1, MPI_FLOAT, rank);
+    MPI::COMM_WORLD.Bcast(&frame[0], numPaddedAtoms_*3, MPI_FLOAT, targetRank);
+    MPI::COMM_WORLD.Bcast(&g, 1, MPI_FLOAT, targetRank);
 
     vector<float> result(numFrames_);
     #pragma omp for
     for (int i = 0; i < numFrames_; i++)
         result[i] = sqrtf(msd_axis_major(numAtoms_, numPaddedAtoms_, numPaddedAtoms_,
-                                         frame, &coordinates_[i*numPaddedAtoms_*3],
+                                         &frame[0], &coordinates_[i*numPaddedAtoms_*3],
                                          g, traces_[i]));
 
-    if (rank_ != rank)
-        free(frame);
     return result;
 }
 
-}
+}  // namespace Tungsten

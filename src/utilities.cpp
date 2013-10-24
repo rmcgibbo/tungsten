@@ -87,11 +87,10 @@ void exitWithMessage(const string& format, ...) {
     va_list args;
     va_start(args, format);
     int r;
-    if (rank == MASTER)
-        r = vfprintf(stderr, format.c_str(), args);
+    r = vfprintf(stderr, format.c_str(), args);
     va_end(args);
-    MPI::Finalize();
-    exit(EXIT_FAILURE);
+    fflush(stderr);
+    MPI::COMM_WORLD.Abort(EXIT_FAILURE);
 }
 
 int printfM(const string& format, ...) {
@@ -101,6 +100,26 @@ int printfM(const string& format, ...) {
     int r;
     if (rank == MASTER)
         r = vprintf(format.c_str(), args);
+    va_end(args);
+    return r;
+}
+
+int printfAOrd(const string& format, ...) {
+    const int rank = MPI::COMM_WORLD.Get_rank();
+    const int size = MPI::COMM_WORLD.Get_size();
+    va_list args;
+    va_start(args, format);
+    int r;
+    MPI::COMM_WORLD.Barrier();
+    fflush(stdout);
+    for (int i = 0; i < size; i++) {
+        MPI::COMM_WORLD.Barrier();
+        if (i == rank)
+            r = vprintf(format.c_str(), args);
+    }
+    fflush(stdout);
+    MPI::COMM_WORLD.Barrier();
+
     va_end(args);
     return r;
 }

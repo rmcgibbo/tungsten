@@ -23,7 +23,7 @@
 #include "mpi.h"
 #include "netcdf.h"
 #include "sys/utsname.h"  // for uname info in title
-#include "time.">         // for creation info in title
+#include "time.h"         // for creation info in title
 #include "math.h"
 #include "sys/stat.h"
 #include "stdio.h"
@@ -84,11 +84,16 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
     if (int r = nc_inq_ndims(ncid_, &numDims)) NC_ERR(r);
     if (numDims == 6) {
         loadHeaders();
-        printf("Current size of frame=%ld\n", getNumFrames());
     } else if (mode_.compare("w") == 0 && numDims == 0)
         initializeHeaders(numAtoms);
     else
         exitWithMessage("Malformed AMBER NetCDF trajector file");
+
+    printfM("\nLoading/Creating output trajectories\n");
+    printfM("------------------------------------\n");
+    printfAOrd("Rank %d: Initializing NetCDF trj %s; currently contains %d frames\n", rank_, filename.c_str(), getNumFrames());
+
+
 }
 
 int NetCDFTrajectoryFile::loadHeaders() {

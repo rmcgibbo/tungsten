@@ -58,6 +58,11 @@ void exitWithMessage(const std::string& fmt, ...);
  */
 int printfM(const std::string& fmt, ...);
 
+/**
+ * printf on all the ranks, with the output coming
+ * to the terminal ordered (first rank 0, then 1, etc)
+ */
+int printfAOrd(const std::string& format, ...);
 
 /**
  * Parse the config file

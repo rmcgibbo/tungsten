@@ -82,7 +82,7 @@ public:
     std::vector<gindex> getAssignments() {
         return assignments_;
     }
-q
+
     /**
      * Get the global index of the conformations which are serving as cluster
      * centers. These are the unique elements of getAssignments(), which the

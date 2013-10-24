@@ -32,11 +32,11 @@
 #include "ParallelMSM.hpp"
 namespace Tungsten {
 
-static const int MASTER = 0;
-
 using std::vector;
 using std::pair;
 using std::map;
+
+static const int MASTER = 0;
 
 // Utilities
 template <class T1, class T2> static bool pairComparatorSecond(const pair<T1, T2>& lhs, const pair<T1, T2>& rhs) {
@@ -167,10 +167,12 @@ void ParallelMSM::computeTransitionCounts() {
         }
     }
 
+    #ifdef VERBOSE
     if (rank_ == MASTER) {
         printf("Count Matrix\n");
         cs_print(countsMatrix_, 1);
     }
+    #endif
 
 }
 

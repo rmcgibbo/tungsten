@@ -34,6 +34,7 @@
 #include "openmm/serialization/XmlSerializer.h"
 #include "utilities.hpp"
 #include "INIReader.h"
+#include "config.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -255,12 +256,15 @@ void resetRandomNumberSeed(System* system, Integrator* integrator)  {
             MCBForce.setRandomNumberSeed(randomSeed);
             continue;
         } catch(const std::bad_cast &bc) {}
+#ifdef OpenMM_HAVE_VERSION_52_PLUS
         try {
             OpenMM::MonteCarloAnisotropicBarostat &MCBForce = dynamic_cast<OpenMM::MonteCarloAnisotropicBarostat &>(force);
             MCBForce.setRandomNumberSeed(randomSeed);
             continue;
         } catch(const std::bad_cast &bc) {}
+#endif
     }
+
 
     try {
         OpenMM::LangevinIntegrator &li = dynamic_cast<OpenMM::LangevinIntegrator &>(*integrator);

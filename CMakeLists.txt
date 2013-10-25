@@ -26,6 +26,8 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/config.h.in
+               ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
 
 # set the source directory
 file(GLOB_RECURSE TUNGSTEN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*")

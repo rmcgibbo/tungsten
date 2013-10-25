@@ -1,20 +1,25 @@
 # Find OpenMM library.
 #
 # Looks for the OpenMM libraries at the default (/usr/local) location 
-# or custom location found in the OPENMM_DIR environment variable. 
+# or custom location found in the OPENMM_DIR, OPENMM_INCLUDE_PATH
+# or OPENMM_LIB_PATH environment variables. 
 #
 # The script defines defines: 
 #  OpenMM_FOUND     
 #  OpenMM_DIR
 #  OpenMM_INCLUDE_PATH
 #  OpenMM_LIB_PATH
-#  OpenMM_LIBRARIES      
+#  OpenMM_LIBRARY
+#  OpenMM_SERIALIZATION_LIBRARY      
 #  OpenMM_PLUGIN_DIR
+#  OpenMM_HAVE_VERSION_52_PLUS
 #
-
 # Author: Szilard Pall (pszilard@cbr.su.se)
 # Modified by Robert McGibbon (rmcgibbo@gmail.com)
+
 include(PrintVariable)
+include(CheckIncludeFileCXX)
+include(FindPackageHandleStandardArgs)
 
 if(OpenMM_INCLUDE_PATH AND OpenMM_LIB_PATH AND OpenMM_PLUGIN_DIR)
     set(OpenMM_FIND_QUIETLY)
@@ -97,23 +102,30 @@ if(IS_DIRECTORY "${OpenMM_LIB_PATH}/plugins")
         ABSOLUTE)
     set(OpenMM_PLUGIN_DIR ${OpenMM_PLUGIN_DIR} CACHE PATH "OpenMM plugins directory")
 else()
-    message(WARNING "Could not detect the OpenMM plugin directory at the default location (${OpenMM_LIB_PATH}/plugins)."
-            "Check your OpenMM installation.")
+    message(WARNING "Could not detect the OpenMM plugin directory at the default location (${OpenMM_LIB_PATH}/plugins). Check your OpenMM installation.")
 endif()
 
+
+
+set(CMAKE_REQUIRED_INCLUDES ${OpenMM_INCLUDE_PATH} )
+check_include_file_cxx(openmm/MonteCarloAnisotropicBarostat.h
+                       OpenMM_HAVE_VERSION_52_PLUS)
+set(CMAKE_REQUIRED_INCLUDES)
 
 set(OpenMM_DIR ${OpenMM_DIR} CACHE PATH "OpenMM installation directory")
 set(OpenMM_PLUGIN_DIR ${OpenMM_PLUGIN_DIR} CACHE PATH "OpenMM plugin directory")
 set(OpenMM_INCLUDE_PATH ${OpenMM_INCLUDE_PATH} CACHE PATH "OpenMM include directory")
 
 
-include(FindPackageHandleStandardArgs)
+
 find_package_handle_standard_args(OpenMM DEFAULT_MSG 
                                     OpenMM_DIR
                                     OpenMM_LIBRARY
                                     OpenMM_SERIALIZATION_LIBRARY
                                     OpenMM_LIB_PATH 
                                     OpenMM_INCLUDE_PATH)
+
+
 mark_as_advanced(
   OpenMM_PLUGIN_DIR
 )

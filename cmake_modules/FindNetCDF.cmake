@@ -209,9 +209,10 @@ else(NetCDF_LIBRARIES AND NetCDF_INCLUDE_DIRS)
     endif()   
     if(NetCDF_NEEDS_HDF5)
         message(STATUS "NetCDF requires HDF5")
-        add_package_dependency(NetCDF DEPENDS_ON HDF5)
+        #add_package_dependency(NetCDF DEPENDS_ON HDF5)
     endif()
 endif(NetCDF_LIBRARIES AND NetCDF_INCLUDE_DIRS)
+
 # Send useful message if everything is found
 find_package_handle_standard_args(NetCDF DEFAULT_MSG
                                            NetCDF_LIBRARIES

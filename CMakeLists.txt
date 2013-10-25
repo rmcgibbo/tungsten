@@ -2,10 +2,8 @@ cmake_minimum_required(VERSION 2.6)
 cmake_policy(SET CMP0012 OLD)  # the netcdf find package seems to require this
 project (tungsten)
 
-
 # Custom cmake modules
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules")
-
 
 # set the default build type as release
 if(NOT CMAKE_BUILD_TYPE)
@@ -26,7 +24,11 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/config.h.in
+# POSIX only
+include(CheckIncludeFileCXX)
+check_include_file_cxx(sys/time.h HAVE_SYS_TIME_H)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
 
 # set the source directory

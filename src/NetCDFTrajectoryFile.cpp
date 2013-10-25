@@ -66,14 +66,15 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
     , rank_(MPI::COMM_WORLD.Get_rank())
     , size_(MPI::COMM_WORLD.Get_size())
     , ncid_(NC_INVALID) {
+    int r;
 
     if (mode_.compare("r") == 0) {
-        if (int r = nc_open(filename.c_str(), NC_NOWRITE, &ncid_)) NC_ERR(r);
+        if ((r = nc_open(filename.c_str(), NC_NOWRITE, &ncid_))) NC_ERR(r);
     } else if (mode_.compare("w") == 0) {
         if (file_exists(filename)) {
-            if (int r = nc_open(filename.c_str(), NC_WRITE, &ncid_)) NC_ERR(r);
+            if ((r = nc_open(filename.c_str(), NC_WRITE, &ncid_))) NC_ERR(r);
         } else
-            if (int r = nc_create(filename.c_str(), NC_64BIT_OFFSET, &ncid_)) NC_ERR(r);
+            if ((r = nc_create(filename.c_str(), NC_64BIT_OFFSET, &ncid_))) NC_ERR(r);
     } else
         exitWithMessage("NetCDFTrajectoryFile: Bad Mode");
 
@@ -81,7 +82,7 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
         exitWithMessage("ERROR OPENING FILE Mode=%s\n", mode.c_str());
 
     int numDims;
-    if (int r = nc_inq_ndims(ncid_, &numDims)) NC_ERR(r);
+    if ((r = nc_inq_ndims(ncid_, &numDims))) NC_ERR(r);
     if (numDims == 6) {
         loadHeaders();
     } else if (mode_.compare("w") == 0 && numDims == 0)
@@ -98,24 +99,27 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
 
 int NetCDFTrajectoryFile::loadHeaders() {
     int r;
-    if (r = nc_inq_dimid(ncid_, "frame", &frameDim_)) NC_ERR(r);
-    if (r = nc_inq_dimid(ncid_, "spatial", &spatialDim_)) NC_ERR(r);
-    if (r = nc_inq_dimid(ncid_, "atom", &atomDim_)) NC_ERR(r);
-    if (r = nc_inq_dimid(ncid_, "cell_spatial", &cellSpatialDim_)) NC_ERR(r);
-    if (r = nc_inq_dimid(ncid_, "cell_angular", &cellAngularDim_)) NC_ERR(r);
-    if (r = nc_inq_dimid(ncid_, "label", &labelDim_)) NC_ERR(r);
+    if ((r = nc_inq_dimid(ncid_, "frame", &frameDim_))) NC_ERR(r);
+    if ((r = nc_inq_dimid(ncid_, "spatial", &spatialDim_))) NC_ERR(r);
+    if ((r = nc_inq_dimid(ncid_, "atom", &atomDim_))) NC_ERR(r);
+    if ((r = nc_inq_dimid(ncid_, "cell_spatial", &cellSpatialDim_))) NC_ERR(r);
+    if ((r = nc_inq_dimid(ncid_, "cell_angular", &cellAngularDim_))) NC_ERR(r);
+    if ((r = nc_inq_dimid(ncid_, "label", &labelDim_))) NC_ERR(r);
 
-    if (r = nc_inq_varid(ncid_, "cell_spatial", &cellSpatialVar_)) NC_ERR(r);
-    if (r = nc_inq_varid(ncid_, "cell_angular", &cellAngularVar_)) NC_ERR(r);
-    if (r = nc_inq_varid(ncid_, "cell_lengths", &cellLengthsVar_)) NC_ERR(r);
-    if (r = nc_inq_varid(ncid_, "cell_angles", &cellAnglesVar_)) NC_ERR(r);
-    if (r = nc_inq_varid(ncid_, "time", &timeVar_)) NC_ERR(r);
-    if (r = nc_inq_varid(ncid_, "coordinates", &coordVar_)) NC_ERR(r);
+    if ((r = nc_inq_varid(ncid_, "cell_spatial", &cellSpatialVar_))) NC_ERR(r);
+    if ((r = nc_inq_varid(ncid_, "cell_angular", &cellAngularVar_))) NC_ERR(r);
+    if ((r = nc_inq_varid(ncid_, "cell_lengths", &cellLengthsVar_))) NC_ERR(r);
+    if ((r = nc_inq_varid(ncid_, "cell_angles", &cellAnglesVar_))) NC_ERR(r);
+    if ((r = nc_inq_varid(ncid_, "time", &timeVar_))) NC_ERR(r);
+    if ((r = nc_inq_varid(ncid_, "coordinates", &coordVar_))) NC_ERR(r);
+
+    return 1;
 }
 
 vector<float> NetCDFTrajectoryFile::loadTime() {
     vector<float> time(getNumFrames());
-    if (int r = nc_get_var_float(ncid_, timeVar_, &time[0])) NC_ERR(r);
+    int r;
+    if ((r = nc_get_var_float(ncid_, timeVar_, &time[0]))) NC_ERR(r);
     return time;
 }
 
@@ -147,19 +151,19 @@ int NetCDFTrajectoryFile::initializeHeaders(int numAtoms) {
     const char* ConventionVersion = "1.0";
 
     // add the global attributes
-    if (r = nc_put_att_text(ncid_, NC_GLOBAL, "title", strlen(title)+1, title)) NC_ERR(r);
-    if (r = nc_put_att_text(ncid_, NC_GLOBAL, "application", strlen(application)+1, application)) NC_ERR(r);
-    if (r = nc_put_att_text(ncid_, NC_GLOBAL, "program", strlen(program)+1, program)) NC_ERR(r);
-    if (r = nc_put_att_text(ncid_, NC_GLOBAL, "programVersion", strlen(programVersion)+1, programVersion)) NC_ERR(r);
-    if (r = nc_put_att_text(ncid_, NC_GLOBAL, "Conventions", strlen(Conventions)+1, Conventions)) NC_ERR(r);
-    if (r = nc_put_att_text(ncid_, NC_GLOBAL, "ConventionVersion", strlen(ConventionVersion)+1, ConventionVersion)) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, NC_GLOBAL, "title", strlen(title)+1, title))) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, NC_GLOBAL, "application", strlen(application)+1, application))) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, NC_GLOBAL, "program", strlen(program)+1, program))) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, NC_GLOBAL, "programVersion", strlen(programVersion)+1, programVersion))) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, NC_GLOBAL, "Conventions", strlen(Conventions)+1, Conventions))) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, NC_GLOBAL, "ConventionVersion", strlen(ConventionVersion)+1, ConventionVersion))) NC_ERR(r);
 
-    if (r = nc_def_dim(ncid_, "frame", NC_UNLIMITED, &frameDim_)) NC_ERR(r);
-    if (r = nc_def_dim(ncid_, "spatial", 3, &spatialDim_)) NC_ERR(r);
-    if (r = nc_def_dim(ncid_, "atom", numAtoms, &atomDim_)) NC_ERR(r);
-    if (r = nc_def_dim(ncid_, "cell_spatial", 3, &cellSpatialDim_)) NC_ERR(r);
-    if (r = nc_def_dim(ncid_, "cell_angular", 3, &cellAngularDim_)) NC_ERR(r);
-    if (r = nc_def_dim(ncid_, "label", 5, &labelDim_)) NC_ERR(r);
+    if ((r = nc_def_dim(ncid_, "frame", NC_UNLIMITED, &frameDim_))) NC_ERR(r);
+    if ((r = nc_def_dim(ncid_, "spatial", 3, &spatialDim_))) NC_ERR(r);
+    if ((r = nc_def_dim(ncid_, "atom", numAtoms, &atomDim_))) NC_ERR(r);
+    if ((r = nc_def_dim(ncid_, "cell_spatial", 3, &cellSpatialDim_))) NC_ERR(r);
+    if ((r = nc_def_dim(ncid_, "cell_angular", 3, &cellAngularDim_))) NC_ERR(r);
+    if ((r = nc_def_dim(ncid_, "label", 5, &labelDim_))) NC_ERR(r);
 
     int cellSpatialDimids[] = {spatialDim_};
     int cellAngularDimids[] = {spatialDim_, labelDim_};
@@ -167,27 +171,27 @@ int NetCDFTrajectoryFile::initializeHeaders(int numAtoms) {
     int cellAnglesDimids[]  = {frameDim_, cellAngularDim_};
     int timeDimids[]        = {frameDim_};
     int coordinatesDimids[] = {frameDim_, atomDim_, spatialDim_};
-    if (r = nc_def_var(ncid_, "cell_spatial", NC_CHAR, 1, cellSpatialDimids, &cellSpatialVar_)) NC_ERR(r);
-    if (r = nc_def_var(ncid_, "cell_angular", NC_CHAR, 2, cellAngularDimids, &cellAngularVar_)) NC_ERR(r);
-    if (r = nc_def_var(ncid_, "cell_lengths", NC_DOUBLE, 2, cellLengthsDimids, &cellLengthsVar_)) NC_ERR(r);
-    if (r = nc_def_var(ncid_, "cell_angles", NC_DOUBLE, 2, cellAnglesDimids, &cellAnglesVar_)) NC_ERR(r);
-    if (r = nc_def_var(ncid_, "time", NC_FLOAT, 1, timeDimids, &timeVar_)) NC_ERR(r);
-    if (r = nc_def_var(ncid_, "coordinates", NC_FLOAT, 3, coordinatesDimids, &coordVar_)) NC_ERR(r);
+    if ((r = nc_def_var(ncid_, "cell_spatial", NC_CHAR, 1, cellSpatialDimids, &cellSpatialVar_))) NC_ERR(r);
+    if ((r = nc_def_var(ncid_, "cell_angular", NC_CHAR, 2, cellAngularDimids, &cellAngularVar_))) NC_ERR(r);
+    if ((r = nc_def_var(ncid_, "cell_lengths", NC_DOUBLE, 2, cellLengthsDimids, &cellLengthsVar_))) NC_ERR(r);
+    if ((r = nc_def_var(ncid_, "cell_angles", NC_DOUBLE, 2, cellAnglesDimids, &cellAnglesVar_))) NC_ERR(r);
+    if ((r = nc_def_var(ncid_, "time", NC_FLOAT, 1, timeDimids, &timeVar_))) NC_ERR(r);
+    if ((r = nc_def_var(ncid_, "coordinates", NC_FLOAT, 3, coordinatesDimids, &coordVar_))) NC_ERR(r);
 
     const char* degree = "degree";
     const char* angstrom = "angstrom";
     const char* picoseconds = "picoseconds";
     const char* xyz = "XYZ";
     const char* alphabetagamma = "alphabeta\0gamma";
-    if (r = nc_put_att_text(ncid_, cellAnglesVar_, "units", strlen(degree), degree)) NC_ERR(r);
-    if (r = nc_put_att_text(ncid_, cellLengthsVar_, "units", strlen(angstrom), angstrom)) NC_ERR(r);
-    if (r = nc_put_att_text(ncid_, timeVar_, "units", strlen(picoseconds), picoseconds)) NC_ERR(r);
-    if (r = nc_put_att_text(ncid_, coordVar_, "units", strlen(angstrom), angstrom)) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, cellAnglesVar_, "units", strlen(degree), degree))) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, cellLengthsVar_, "units", strlen(angstrom), angstrom))) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, timeVar_, "units", strlen(picoseconds), picoseconds))) NC_ERR(r);
+    if ((r = nc_put_att_text(ncid_, coordVar_, "units", strlen(angstrom), angstrom))) NC_ERR(r);
 
-    if (r = nc_enddef(ncid_)) NC_ERR(r);
+    if ((r = nc_enddef(ncid_))) NC_ERR(r);
 
-    if (r = nc_put_var_text(ncid_, cellSpatialVar_, xyz)) NC_ERR(r);
-    if (r = nc_put_var_text(ncid_, cellAngularVar_, alphabetagamma)) NC_ERR(r);
+    if ((r = nc_put_var_text(ncid_, cellSpatialVar_, xyz))) NC_ERR(r);
+    if ((r = nc_put_var_text(ncid_, cellAngularVar_, alphabetagamma))) NC_ERR(r);
     return 1;
 }
 
@@ -222,16 +226,16 @@ int NetCDFTrajectoryFile::write(OpenMM::State state) {
 
     int r;  // errors
     const size_t index1[] = {frame};
-    if (r = nc_put_var1_float(ncid_, timeVar_, index1, &time)) NC_ERR(r);
+    if ((r = nc_put_var1_float(ncid_, timeVar_, index1, &time))) NC_ERR(r);
 
     const size_t index2[] = {frame, 0};
     const size_t count2[] = {1, 3};
-    if (r = nc_put_vara_double(ncid_, cellLengthsVar_, index2, count2, cellLengths)) NC_ERR(r);
-    if (r = nc_put_vara_double(ncid_, cellAnglesVar_, index2, count2, cellAngles)) NC_ERR(r);
+    if ((r = nc_put_vara_double(ncid_, cellLengthsVar_, index2, count2, cellLengths))) NC_ERR(r);
+    if ((r = nc_put_vara_double(ncid_, cellAnglesVar_, index2, count2, cellAngles))) NC_ERR(r);
 
     const size_t index3[] = {frame, 0, 0};
     const size_t count3[] = {1, getNumAtoms(), 3};
-    if (r = nc_put_vara_float(ncid_, coordVar_, index3, count3, &positions[0])) NC_ERR(r);
+    if ((r = nc_put_vara_float(ncid_, coordVar_, index3, count3, &positions[0]))) NC_ERR(r);
 
     return 1;
 }
@@ -242,6 +246,7 @@ PositionsAndPeriodicBox NetCDFTrajectoryFile::loadNonlocalStateMPI(int rank, int
     const int magic2 = -23456;
     const int tag1 = 123;
     const int tag2 = 234;
+    int r;
 
     // This could be done more efficiently by only exchanging the necessary pairs, but
     // its complex to get right without deadlocking because many nodes may request
@@ -273,10 +278,10 @@ PositionsAndPeriodicBox NetCDFTrajectoryFile::loadNonlocalStateMPI(int rank, int
             // load the data into the send buffer
             size_t start3[] = {gatheredIndex[i], 0, 0};
             size_t count3[] = {1, numAtoms, 3};
-            if (int r = nc_get_vara_float(ncid_, coordVar_, start3, count3, &sendPositionsBuffer[0])) NC_ERR(r);
+            if ((r = nc_get_vara_float(ncid_, coordVar_, start3, count3, &sendPositionsBuffer[0]))) NC_ERR(r);
             size_t start2[] = {gatheredIndex[i], 0};
             size_t count2[] = {1, 3};
-            if (int r = nc_get_vara_double(ncid_, cellLengthsVar_, start2, count2, &sendCellLengthsBuffer[0])) NC_ERR(r);
+            if ((r = nc_get_vara_double(ncid_, cellLengthsVar_, start2, count2, &sendCellLengthsBuffer[0]))) NC_ERR(r);
             sendRequests1.push_back(MPI::COMM_WORLD.Isend(&sendPositionsBuffer[0],
                                     numAtoms*3, MPI_FLOAT, i, tag1));
             sendRequests2.push_back(MPI::COMM_WORLD.Isend(&sendCellLengthsBuffer[0],

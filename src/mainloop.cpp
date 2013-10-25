@@ -54,7 +54,7 @@ static const int MASTER = 0;  // mpi master node, for all terminal IO
 static const int FILENAME_NUMBER_WIDTH = 5;
 
 
-int run(int argc, char* argv[], double* totalMDTime) {
+void run(int argc, char* argv[], double* totalMDTime) {
     const int size = MPI::COMM_WORLD.Get_size();
     const int rank = MPI::COMM_WORLD.Get_rank();
     // Parse the command line

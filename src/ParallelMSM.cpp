@@ -43,16 +43,34 @@ template <class T1, class T2> static bool pairComparatorSecond(const pair<T1, T2
     return lhs.second < rhs.second;
 }
 
+#ifdef __GNUC__
+  /* Test for GCC > 2.95 */
+  #if __GNUC__ > 2 || (__GNUC__ == 2 && (__GNUC_MINOR__ > 95))
+    #define likely(x)   __builtin_expect(!!(x), 1)
+    #define unlikely(x) __builtin_expect(!!(x), 0)
+  #else /* __GNUC__ > 2 ... */
+    #define likely(x)   (x)
+    #define unlikely(x) (x)
+  #endif /* __GNUC__ > 2 ... */
+#else /* __GNUC__ */
+  #define likely(x)   (x)
+  #define unlikely(x) (x)
+#endif /* __GNUC__ */
+
+
 // Class implementation
 
-ParallelMSM::ParallelMSM(const std::vector<gindex>& assignments,
-                         const std::vector<gindex>& centers)
+ParallelMSM::ParallelMSM(const vector<gindex>& assignments,
+                         const vector<gindex>& centers,
+                         const vector<float>& time)
     : assignments_(assignments)
     , numStates_(centers.size())
     , centers_(centers)
+    , time_(time)
     , rank_(MPI::COMM_WORLD.Get_rank())
     , size_(MPI::COMM_WORLD.Get_size())
-    , countsMatrix_(NULL) {
+    , countsMatrix_(NULL)
+{
     // build MSM
     computeStateLabels();
     computeTransitionCounts();
@@ -116,7 +134,13 @@ void ParallelMSM::computeTransitionCounts() {
     cs* T = cs_spalloc(numStates_, numStates_, 1, 1, 1);
     // Add the pairs
     for (int i = 0; i < stateLabels_.size()-1; i++)
-        cs_entry(T, stateLabels_[i+1], stateLabels_[i], 1.0);
+        // in tungsten, each of the trajectory files contain
+        // disjoint segments, since each adaptive sampling
+        // round is written to the same trajectory file. we dont
+        // want to spurriously mark counts between the end of one
+        // trajectory and the beginning of the other
+        if (likely(time_[i+1] > time_[i]))
+            cs_entry(T, stateLabels_[i+1], stateLabels_[i], 1.0);
 
     // Convert to CSC form and sum duplicace entries
     countsMatrix_ = cs_triplet(T);

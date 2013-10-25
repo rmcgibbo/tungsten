@@ -41,9 +41,15 @@ public:
      * @param centers       Centers, which should be the SAME on all of the
      *                      MPI ranks, is a list of all of the <rank,index>
      *                      pairs that are cluster centers.
+     * @param time          The simulation time of each frame in the assignments.
+     *                      Currently, this does NOT support variable timestep
+     *                      integrator methods, but it does support trajectories
+     *                      whose time index "restarts", indicating disjoint
+     *                      segments of a trajectory
      */
     ParallelMSM(const std::vector<gindex>& assignments,
-                const std::vector<gindex>& centers);
+                const std::vector<gindex>& centers,
+                const std::vector<float>& time);
 
     /**
      * Scatter the <rank,index> pair of the N states which have the fewest
@@ -90,6 +96,7 @@ private:
     const int numStates_;  // number of states in the MSM
     const std::vector<gindex> assignments_;
     const std::vector<gindex> centers_;
+    const std::vector<float> time_;
 
     // This class deals externally with assignments and states
     // as std::pair<int, int> giving the node on which the conformation

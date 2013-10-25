@@ -65,13 +65,16 @@ int run(int argc, char* argv[], double* totalMDTime) {
     }
 
     printUname();
+    fflush(stdout); MPI::COMM_WORLD.Barrier();
 
     // Get the config file
     ConfigOpts opts = parseConfigFile(argv[4]);
 
     // Create the context from the input files
     ifstream systemXml(argv[1]);
+    if (systemXml == NULL) exitWithMessage("No such file or directory: '%s'\n", argv[1]);
     ifstream integratorXml(argv[2]);
+    if (integratorXml == NULL) exitWithMessage("No such file or directory: '%s'\n", argv[2]);
     Context* context =  createContext(systemXml, integratorXml, opts.openmmPlatform);
     Integrator& integrator = context->getIntegrator();
     const System& system = context->getSystem();
@@ -79,10 +82,11 @@ int run(int argc, char* argv[], double* totalMDTime) {
     bool isPeriodic = hasPeriodicBoundaries(system);
     const double temperature = getTemperature(system, integrator);
     if (temperature <= 0)
-        exitWithMessage("tungsten is only compatible with systems under temperature control");
+        exitWithMessage("tungsten is only compatible with systems under temperature control\n");
 
     // Set the initial state
     fstream stateXml(argv[3]);
+    if (stateXml == NULL) exitWithMessage("No such file or directory: '%s'\n", argv[1]);
     State* state = XmlSerializer::deserialize<State>(stateXml);
     context->setState(*state);
 
@@ -119,7 +123,7 @@ int run(int argc, char* argv[], double* totalMDTime) {
         clusterer.cluster(opts.kcentersRmsdCutoff, 0, 0);
         printfM("Scattering new starting min-counts starting confs to each rank\n");
         printfM("--------------------------------------------------------------\n");
-        ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters());
+        ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters(), file.loadTime());
         gindex newConformation = markovModel.scatterMinCountStates();
         printfAOrd("Rank %d: received frame %d from rank %d\n", rank, newConformation.frame, newConformation.rank);
 

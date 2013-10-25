@@ -88,7 +88,11 @@ void exitWithMessage(const string& format, ...) {
     va_list args;
     va_start(args, format);
     int r;
-    r = vfprintf(stderr, format.c_str(), args);
+    if (rank == MASTER) {
+        fprintf(stderr, "!=======================================================!\n");
+        r = vfprintf(stderr, format.c_str(), args);
+        fprintf(stderr, "!=======================================================!\n");
+    }
     va_end(args);
     fflush(stderr);
     MPI::COMM_WORLD.Abort(EXIT_FAILURE);
@@ -153,9 +157,7 @@ void printPerformance(double mdTime, time_t endWallTime, time_t startWallTime) {
 
 ConfigOpts parseConfigFile(const char* configFileName) {
     INIReader reader(configFileName);
-    if (reader.ParseError() < 0) {
-        exitWithMessage("Could not find config file");
-    }
+    if (reader.ParseError() < 0) exitWithMessage("Could not find config file\n");
 
     ConfigOpts out;
     out.numRounds = reader.GetInteger("", "numRounds", -1);

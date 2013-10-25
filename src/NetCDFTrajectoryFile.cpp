@@ -113,6 +113,12 @@ int NetCDFTrajectoryFile::loadHeaders() {
     if (r = nc_inq_varid(ncid_, "coordinates", &coordVar_)) NC_ERR(r);
 }
 
+vector<float> NetCDFTrajectoryFile::loadTime() {
+    vector<float> time(getNumFrames());
+    if (int r = nc_get_var_float(ncid_, timeVar_, &time[0])) NC_ERR(r);
+    return time;
+}
+
 
 int NetCDFTrajectoryFile::initializeHeaders(int numAtoms) {
     int r;

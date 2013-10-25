@@ -109,6 +109,11 @@ public:
         return out;
     }
 
+    /**
+     * Load the simulation time of every frame in the trajectory
+     */
+    std::vector<float> loadTime();
+
     /*
      * Compute the number of atoms, including padding, which will be in the
      * results of loadAllAxisMajorPositions

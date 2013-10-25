@@ -1,14 +1,11 @@
 cmake_minimum_required(VERSION 2.6)
 cmake_policy(SET CMP0012 OLD)  # the netcdf find package seems to require this
-
 project (tungsten)
 
-# Set the compilers to mpicc
-set(CMAKE_C_COMPILER mpicc)
-set(CMAKE_CXX_COMPILER mpicxx)
 
 # Custom cmake modules
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules")
+
 
 # set the default build type as release
 if(NOT CMAKE_BUILD_TYPE)
@@ -18,7 +15,9 @@ RelWithDebInfo MinSizeRel."
       FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
 
+
 # Find all of our dependencies
+find_package(MPI)
 find_package(NetCDF)
 find_package(OpenMM)
 find_package(OpenMP)
@@ -28,15 +27,27 @@ if (OPENMP_FOUND)
 endif()
 
 
+# set the source directory
 file(GLOB_RECURSE TUNGSTEN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*")
 add_executable (tungsten ${TUNGSTEN_SOURCES})
+
+# Our includes
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/rmsd/")
-include_directories(${OpenMM_INCLUDE_PATH})
-include_directories(${NetCDF_INCLUDE_DIR})
-include_directories(${NetCDF_INCLUDE_DIRS})
 
-target_link_libraries(tungsten ${NetCDF_C_LIBRARY})
+# MPI include/link
+target_link_libraries(tungsten ${MPI_CXX_LIBRARIES})
+target_link_libraries(tungsten ${MPI_CXX_LIBRARIES})
+include_directories(${MPI_CXX_INCLUDE_PATH})
+set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
+
+# OpenMM include/link
+include_directories(${OpenMM_INCLUDE_PATH})
 target_link_libraries(tungsten ${OpenMM_LIBRARY})
 target_link_libraries(tungsten ${OpenMM_SERIALIZATION_LIBRARY})
+
+# NetCDF include/link
+include_directories(${NetCDF_INCLUDE_DIR})
+include_directories(${NetCDF_INCLUDE_DIRS})
+target_link_libraries(tungsten ${NetCDF_C_LIBRARY})
 

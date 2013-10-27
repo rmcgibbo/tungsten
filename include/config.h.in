@@ -2,3 +2,4 @@
 #cmakedefine HAVE_SYS_TIME_H
 #cmakedefine HAVE_POSIX_MEMALIGN
 #cmakedefine HAVE_GETTIMEOFDAY
+#cmakedefine HAVE_ALIGNED_MALLOC

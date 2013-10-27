@@ -30,8 +30,8 @@ include(CheckFunctionExists)
 include(CheckTypeSize)
 check_function_exists(posix_memalign HAVE_POSIX_MEMALIGN)
 check_function_exists(gettimeofday HAVE_GETTIMEOFDAY)
+check_function_exists(_aligned_malloc HAVE_ALIGNED_MALLOC)
 check_include_file_cxx(sys/time.h HAVE_SYS_TIME_H)
-set(CMAKE_EXTRA_INCLUDE_FILES)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
 

@@ -35,9 +35,8 @@
 #include <stdlib.h>  // For malloc() and free()
 #include <iostream>  // For std::cout
 #include <ostream>   // For std::endl
+#include "config.h"  // use posix_memalign or _aligned_malloc
 
-// The following headers contain stuff that main() uses.
-#include <list>      // For std::list
 namespace Tungsten {
 
 template <typename T, std::size_t Alignment>
@@ -126,11 +125,18 @@ public:
 
         // aligned_allocator wraps malloc().
         //void * const pv = malloc(n * sizeof(T));
-	    void* pv = NULL;
-	    int err = posix_memalign(&pv, Alignment, n*sizeof(T));
+        void* pv = NULL;
+	int err = 0;
+#ifdef HAVE_POSIX_MEMALIGN
+        err = posix_memalign(&pv, Alignment, n*sizeof(T));
+#elif HAVE_ALIGNED_MALLOC
+	pv = _aligned_malloc(n*sizeof(T), Alignment);
+#else
+        #error "Unsupported platform. Neither posix_memalign nor _aligned_malloc found"
+#endif
 
-        // Allocators should throw std::bad_alloc in the case of memory allocation failure.
-        if (err != 0) {
+        if (err != 0 || pv == NULL) {
+	  // Allocators should throw std::bad_alloc in the case of memory allocation failure.
             throw std::bad_alloc();
         }
 

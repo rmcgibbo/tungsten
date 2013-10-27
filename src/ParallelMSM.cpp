@@ -26,10 +26,17 @@
 #include <vector>
 #include <utility>
 #include <numeric>
+#include "config.h"
 #include "csparse.h"
 #include "typedefs.hpp"
 #include "utilities.hpp"
 #include "ParallelMSM.hpp"
+#if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+
 namespace Tungsten {
 
 using std::vector;
@@ -128,6 +135,13 @@ gindex ParallelMSM::scatterMinCountStates() {
 
 
 void ParallelMSM::computeTransitionCounts() {
+#if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
+    struct timeval startTime;
+    gettimeofday(&startTime, NULL);
+#else
+    time_t startTime = (NULL);
+#endif
+
     if (stateLabels_.size() == 0)
         exitWithMessage("NO ASSIGNMENTS!");
 
@@ -191,12 +205,16 @@ void ParallelMSM::computeTransitionCounts() {
         }
     }
 
-    #ifdef VERBOSE
-    if (rank_ == MASTER) {
-        printf("Count Matrix\n");
-        cs_print(countsMatrix_, 1);
-    }
-    #endif
+#if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
+    struct timeval endTime;
+    gettimeofday(&endTime, NULL);
+    long long elapsedLL = (endTime.tv_sec - startTime.tv_sec)*1000000LL + (endTime.tv_usec-startTime.tv_usec);
+    double elapsed = (double) elapsed / 1000000.0;
+#else
+    time_t endTime = time(NULL);
+    double elapsed = difftime(endTime, startTime);
+#endif
+    printfM("Transition Counts Matrix Built (t=%.2f s)\n\n", elapsed / 1000000.0);
 
 }
 

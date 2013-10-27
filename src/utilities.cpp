@@ -91,6 +91,7 @@ void exitWithMessage(const string& format, ...) {
     if (rank == MASTER) {
         fprintf(stderr, "!=======================================================!\n");
         r = vfprintf(stderr, format.c_str(), args);
+	fprintf(stderr, "\n");
         fprintf(stderr, "!=======================================================!\n");
     }
     va_end(args);
@@ -131,12 +132,12 @@ int printfAOrd(const string& format, ...) {
 }
 
 
-void printPerformance(double mdTime, time_t endWallTime, time_t startWallTime) {
+void printPerformance(double elapsedMDTime, double elapsedWallTime) {
     const int size = MPI::COMM_WORLD.Get_size();
     const int rank = MPI::COMM_WORLD.Get_rank();
     static const double SEC_PER_DAY = 86400.0;
     // number of simulated ns per day of wall time
-    double nsPerDay = (mdTime/1000.0) / (difftime(endWallTime, startWallTime)/SEC_PER_DAY);
+    double nsPerDay = (elapsedMDTime/1000.0) / elapsedWallTime;
     vector<double> recvBuffer(size);
     MPI::COMM_WORLD.Gather(&nsPerDay, 1, MPI_DOUBLE, &recvBuffer[0], 1, MPI_DOUBLE, MASTER);
     if (rank == MASTER) {

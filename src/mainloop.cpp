@@ -54,7 +54,7 @@ static const int MASTER = 0;  // mpi master node, for all terminal IO
 static const int FILENAME_NUMBER_WIDTH = 5;
 
 
-void run(int argc, char* argv[], double* totalMDTime) {
+void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD) {
     const int size = MPI::COMM_WORLD.Get_size();
     const int rank = MPI::COMM_WORLD.Get_rank();
     // Parse the command line
@@ -112,19 +112,21 @@ void run(int argc, char* argv[], double* totalMDTime) {
         // note, using getTime() here relies on the fact that every round, we
         // reset the simulation clock to zero.
         double mdTime = context->getState(0).getTime();
+	double elapsedWallTime = difftime(roundEndWallTime, roundStartWallTime);
         printfM("MD Performance: ");
-        printPerformance(mdTime, roundEndWallTime, roundStartWallTime);
+        printPerformance(mdTime, elapsedWallTime);
         (*totalMDTime) += mdTime;
+	(*totalWallTimeInMD) += elapsedWallTime;
 
         // set up for the next round
         // Run clustering with a strude of 1
 
         ParallelKCenters clusterer(file, 1, opts.kcentersRmsdIndices);
         clusterer.cluster(opts.kcentersRmsdCutoff, 0, 0);
-        printfM("Scattering new starting min-counts starting confs to each rank\n");
-        printfM("--------------------------------------------------------------\n");
         ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters(), file.loadTime());
         gindex newConformation = markovModel.scatterMinCountStates();
+        printfM("Scattering new starting min-counts starting confs to each rank\n");
+        printfM("--------------------------------------------------------------\n");
         printfAOrd("Rank %d: received frame %d from rank %d\n", rank, newConformation.frame, newConformation.rank);
 
         PositionsAndPeriodicBox s = file.loadNonlocalStateMPI(newConformation.rank, newConformation.frame);
@@ -149,11 +151,11 @@ int main(int argc, char* argv[]) {
         printf("certain conditions; see LICENSE.txt for details\n\n");
     }
     double totalMDTime = 0;
-    double aggegateMDTime = 0;
+    double totalTimeInMD = 0;
     time_t startWallTime = time(NULL);
 
     try {
-        run(argc, argv, &totalMDTime);
+        run(argc, argv, &totalMDTime, &totalTimeInMD);
     } catch (std::exception e) {
         fflush(stdout);
         fflush(stderr);
@@ -166,11 +168,18 @@ int main(int argc, char* argv[]) {
     }
 
     time_t endWallTime = time(NULL);
+    double elapsedWallTime = difftime(endWallTime, startWallTime);
+    
+    double aggegateTimeInMD = 0;  // core*seconds in which we were *actually* running MD
+    double aggregateWallTime = 0; // core*seconds which the process consumed overall
+    MPI::COMM_WORLD.Reduce(&totalTimeInMD, &aggegateTimeInMD, 1, MPI_DOUBLE, MPI_SUM, MASTER);
+    MPI::COMM_WORLD.Reduce(&elapsedWallTime, &aggregateWallTime, 1, MPI_DOUBLE, MPI_SUM, MASTER);
     printfM("\nOverall Performance\n");
     printfM("===================\n");
-    printPerformance(totalMDTime, endWallTime, startWallTime);
-    MPI::COMM_WORLD.Reduce(&totalMDTime, &aggegateMDTime, 1, MPI_DOUBLE, MPI_SUM, MASTER);
-    printfM("Total Sampling: %.3f ns\n\n", aggegateMDTime/1000.0);
+    printPerformance(totalMDTime, elapsedWallTime);
+    printfM("Wall-Clock Efficiency (core*hours doing MD / core*hours overall): %.2f%%\n\n",
+	    100*(aggegateTimeInMD / aggregateWallTime));
+
     printfM("Starfleet out.\n");
     MPI::Finalize();
 }

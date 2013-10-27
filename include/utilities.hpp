@@ -69,10 +69,10 @@ int printfAOrd(const std::string& format, ...);
 /**
  * Calculate and print the performance of an MD simulation
  * from the elapsed simulation time on each node (mdTime)
- * and the elapsed wall time (startWallTime / endWallTime)
+ * and the elapsed wall time
  */
-void printPerformance(double mdTime, time_t endWallTime,
-                      time_t startWallTime);
+void printPerformance(double elapsedMDTime, double elapsedWallTime);
+
 
 /**
  * Parse the config file

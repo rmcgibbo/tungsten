@@ -22,18 +22,24 @@
 
 #include "mpi.h"
 #include "omp.h"
-#include "time.h"
 #include <math.h>
 #include <cstdlib>
 #include <limits>
 #include <algorithm>    // std::copy
 #include <vector>
-#include "utilities.hpp"
+#include "config.h"
 #include "typedefs.hpp"
+#include "utilities.hpp"
 #include "aligned_allocator.hpp"
 #include "NetCDFTrajectoryFile.hpp"
 #include "ParallelKCenters.hpp"
 #include "theobald_rmsd.h"
+#if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+
 namespace Tungsten {
 
 using std::vector;
@@ -122,7 +128,12 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
 
     printfM("\nParallel KCenters Clustering\n");
     printfM("----------------------------\n");
-    time_t startTime = time(NULL);
+#if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
+    struct timeval startTime;
+    gettimeofday(&startTime, NULL);
+#else
+    time_t startTime = (NULL);
+#endif
 
     for (int i = 0; true; i++) {
         triplet max = maxLocAllReduce(distances);
@@ -156,10 +167,17 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
         fflush(stdout);
         #endif
     }
+#if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
+    struct timeval endTime;
+    gettimeofday(&endTime, NULL);
+    long long elapsedLL = (endTime.tv_sec - startTime.tv_sec)*1000000LL + (endTime.tv_usec-startTime.tv_usec);
+    double elapsed = elapsed / 1000000.0;
+#else
     time_t endTime = time(NULL);
     double elapsed = difftime(endTime, startTime);
+#endif
+    printfM("LOCATED k=%lu states (t=%.2f s)\n", centers_.size(), elapsed / 1000000.0);
 
-    printfM("LOCATED k=%lu states (t=%.2f s)\n\n", centers_.size(), elapsed);
 }
 
 

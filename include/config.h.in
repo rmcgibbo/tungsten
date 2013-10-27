@@ -1,2 +1,4 @@
 #cmakedefine OpenMM_HAVE_VERSION_52_PLUS
 #cmakedefine HAVE_SYS_TIME_H
+#cmakedefine HAVE_POSIX_MEMALIGN
+#cmakedefine HAVE_GETTIMEOFDAY

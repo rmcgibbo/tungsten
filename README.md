@@ -16,24 +16,24 @@ Chem. Theory Comput.*, **2011**, 7 (10), 3405.).
 Usage
 -----
 `tungsten` requires 4 inputs files, specified on the command line. The first
-thee are OpenMM xml files, `system.xml`, `integrator.xml`, and `state.xml`,
-which specify the complete Hamiltonian, integrator, and initial conditions
-for the simulation. These files can be constructed from an RCSB PDB, amber
-.incprd/.prmtop, gromacs .gro/.top, or desmond .dms file using the OpenMM
-python app. You can modify and use the script `examples/buildTungstenXML.py`,
-included with the tungsten source.
+thee are OpenMM xml files, `system.xml`, `integrator.xml`, and (`state.xml` or
+`coords.nc`), which specify the complete Hamiltonian, integrator, and initial
+conditions for the simulation. These files can be constructed from an RCSB PDB,
+amber .incprd/.prmtop, gromacs .gro/.top, or desmond .dms file using the
+OpenMM python app. You can modify and use the script
+`examples/buildTungstenXML.py`, included with the tungsten source.
 
-Note: In place of `state.xml`, you may the initial conditions for the
-simulations as a netCDF input trajectory, which *must* end in the `.nc`
-file extension.  If the input coordinates are given in `xml` format, each
-independent parallel processor in the tungsten job will use the same starting
-coordinates. In contrast, when a multiframe netCDF trajectory as input, the
-frames from the input files will be "scattered" to the processors: the first
-processor will receive the first frame, the second processor the second frame,
-etc. Although not strictly necessary, the length of the input trajectory shou
-probably be equal to the number of parallel processors (otherwise some of the
-frames will be used twice if there are an excell of processors, or ignored if
-there are dearth).
+You may the initial conditions for the simulations as an OpenMM `xml` file
+or a netCDF input trajectory (which *must* end in the `.nc` file extension).
+If the input coordinates are given in `xml` format, each independent parallel
+processor in the tungsten job will use the same starting coordinates. In
+contrast, when a multiframe netCDF trajectory as input, the frames from the
+input files will be "scattered" to the processors: the first processor will
+receive the first frame, the second processor the second frame, etc. Although
+not strictly necessary, the length of the input trajectory shou probably be
+equal to the number of parallel processors (otherwise some of the frames will
+be used twice if there are an excell of processors, or ignored if there are
+dearth).
 
 `tungsten` also requires a short configuration file, in a simple key=value
 format to specify, among other things, the frequency of clustering, the

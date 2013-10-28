@@ -54,13 +54,13 @@ static inline bool isfinite(T x)  {
     return (x <= std::numeric_limits<T>::max() && x >= -std::numeric_limits<T>::max());
 }
 
-inline bool file_exists (const string& name) {
+inline bool file_exists (const char* name) {
     struct stat buffer;
-    return (stat (name.c_str(), &buffer) == 0);
+    return (stat (name, &buffer) == 0);
 }
 
 
-NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
+NetCDFTrajectoryFile::NetCDFTrajectoryFile(const char* filename,
         const string& mode, int numAtoms = 0)
     : mode_(mode)
     , rank_(MPI::COMM_WORLD.Get_rank())
@@ -69,14 +69,13 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
     int r;
 
     if (mode_.compare("r") == 0) {
-        if ((r = nc_open(filename.c_str(), NC_NOWRITE, &ncid_))) NC_ERR(r);
+        if ((r = nc_open(filename, NC_NOWRITE, &ncid_))) NC_ERR(r);
     } else if (mode_.compare("w") == 0) {
         if (file_exists(filename)) {
-            if ((r = nc_open(filename.c_str(), NC_WRITE, &ncid_))) NC_ERR(r);
-        } else
-            if ((r = nc_create(filename.c_str(), NC_64BIT_OFFSET, &ncid_))) NC_ERR(r);
+            if ((r = nc_open(filename, NC_WRITE, &ncid_))) NC_ERR(r);
+        } else if ((r = nc_create(filename, NC_64BIT_OFFSET, &ncid_))) NC_ERR(r);
     } else
-        exitWithMessage("NetCDFTrajectoryFile: Bad Mode");
+        exitWithMessage("NetCDFTrajectoryFile: Only mode='r' and mode='w' are supported");
 
     if (!isvalid())
         exitWithMessage("ERROR OPENING FILE Mode=%s\n", mode.c_str());
@@ -85,16 +84,13 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const string& filename,
     if ((r = nc_inq_ndims(ncid_, &numDims))) NC_ERR(r);
     if (numDims == 6) {
         loadHeaders();
-    } else if (mode_.compare("w") == 0 && numDims == 0)
+    } else if (mode_.compare("w") == 0 && numDims == 0) {
         initializeHeaders(numAtoms);
-    else
+        printfM("\nLoading/Creating output trajectories\n");
+        printfM("------------------------------------\n");
+        printfAOrd("Rank %d: Initializing NetCDF trj %s; currently contains %d frames\n", rank_, filename, getNumFrames());
+    } else
         exitWithMessage("Malformed AMBER NetCDF trajector file");
-
-    printfM("\nLoading/Creating output trajectories\n");
-    printfM("------------------------------------\n");
-    printfAOrd("Rank %d: Initializing NetCDF trj %s; currently contains %d frames\n", rank_, filename.c_str(), getNumFrames());
-
-
 }
 
 int NetCDFTrajectoryFile::loadHeaders() {
@@ -239,6 +235,39 @@ int NetCDFTrajectoryFile::write(OpenMM::State state) {
 
     return 1;
 }
+
+PositionsAndPeriodicBox NetCDFTrajectoryFile::loadState(int index) {
+    int r;
+    size_t numAtoms = getNumAtoms();
+    size_t start3[] = {index, 0, 0};
+    size_t count3[] = {1, numAtoms, 3};
+
+    size_t start2[] = {index, 0};
+    size_t count2[] = {1, 3};
+
+    vector<float> postions(numAtoms*3);
+    vector<double> cellLengths(3);
+
+    if ((r = nc_get_vara_float(ncid_, coordVar_, start3, count3, &postions[0]))) NC_ERR(r);
+    if ((r = nc_get_vara_double(ncid_, cellLengthsVar_, start2, count2, &cellLengths[0]))) NC_ERR(r);
+
+    vector<OpenMM::Vec3> mmPositions;
+    for (int i = 0; i < numAtoms; i++) {
+        OpenMM::Vec3 v(postions[i*3 + 0] / 10.0,
+                       postions[i*3 + 1] / 10.0,
+                       postions[i*3 + 2] / 10.0);
+        mmPositions.push_back(v);
+    }
+
+    PositionsAndPeriodicBox retval;
+    retval.positions = mmPositions;
+    retval.boxA = OpenMM::Vec3(cellLengths[0] / 10.0, 0, 0);
+    retval.boxB = OpenMM::Vec3(0, cellLengths[1] / 10.0, 0);
+    retval.boxC = OpenMM::Vec3(0, 0, cellLengths[2] / 10.0);
+
+    return retval;
+}
+
 
 
 PositionsAndPeriodicBox NetCDFTrajectoryFile::loadNonlocalStateMPI(int rank, int index) {

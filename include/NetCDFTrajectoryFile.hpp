@@ -36,9 +36,18 @@ static const int NC_INVALID = -1;
 
 class NetCDFTrajectoryFile {
 public:
-    NetCDFTrajectoryFile(const std::string& filename, const std::string& mode, int numAtoms);
+    NetCDFTrajectoryFile(const char* filename, const std::string& mode, int numAtoms);
     ~NetCDFTrajectoryFile(void) {
+        if (isvalid())
+            close();
+    }
+
+    /*
+     * Close the file handle
+     */
+    void close() {
         if (int r = nc_close(ncid_)) NC_ERR(r);
+        ncid_ = NC_INVALID;
     }
 
     /*
@@ -47,10 +56,18 @@ public:
      */
     int write(OpenMM::State state);
 
+    /*
+     * Fetch the `index`-th frame from this trajectory, returning the positions
+     * and periodic box vectors.
+     *
+     *@param index   the index of the frame to load
+     */
+    PositionsAndPeriodicBox loadState(int index);
+
 
     /*
-     * Fetch the `index`-th frame of positions from the trajectory
-     * residing on the `rank`th MPI rank.
+     * Fetch the `index`-th frame from the trajectory residing on the `rank`th
+     * MPI rank, returning the positions and periodic box vectors.
      *
      * @param rank    the MPI rank of the process to load from
      * @param index   the index of the frame to load
@@ -94,7 +111,7 @@ public:
             size_t start[] = {i, 0, 0};
             size_t count[] = {1, numAtoms, 3};
             if (int r = nc_get_vara_float(ncid_, coordVar_, start, count, &frame[0])) NC_ERR(r);
-            
+
             for (int jj = 0; jj < atomIndices.size(); jj++) {
                 int j = atomIndices[jj];
                 // j is the index of the atom on disk
@@ -127,9 +144,9 @@ public:
         return ((atomIndices.size() + N - 1) / N) * N;
     }
 
-    /* 
+    /*
      * Get the number of atoms stored in this trajectory
-     */ 
+     */
     size_t getNumAtoms() const {
         if (!isvalid()) {
             printf("invalid");
@@ -138,24 +155,24 @@ public:
         if (int r = nc_inq_dimlen(ncid_, atomDim_, &numAtoms)) NC_ERR(r);
         return numAtoms;
     }
-    
+
     /*
      * Get the number of frames/snapshots stored in this trajectory
-     */ 
+     */
     size_t getNumFrames() const {
         // total number of frames in the dataset
         size_t numTotalFrames;
         if (int r = nc_inq_dimlen(ncid_, frameDim_, &numTotalFrames)) NC_ERR(r);
         return numTotalFrames;
     }
-    
+
     /**
      * Flush the trajectory, writing any contents in internal buffers to disk
      */
     void flush(void) {
         if (int r = nc_sync(ncid_)) NC_ERR(r);
     }
-    
+
     /**
      * Check whether the netcdf file handle is valid.
      */
@@ -166,13 +183,13 @@ public:
 private:
     int initializeHeaders(int numAtoms);
     int loadHeaders();
-    
+
     const int rank_;
     const int size_;
     const std::string mode_;
 
     // the file handle
-    int ncid_; 
+    int ncid_;
     // dimensions
     int frameDim_;
     int spatialDim_;

@@ -55,17 +55,18 @@ static const int FILENAME_NUMBER_WIDTH = 5;
 
 
 void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD) {
-    const int size = MPI::COMM_WORLD.Get_size();
-    const int rank = MPI::COMM_WORLD.Get_rank();
+    const int SIZE = MPI::COMM_WORLD.Get_size();
+    const int RANK = MPI::COMM_WORLD.Get_rank();
     // Parse the command line
     if (argc != 5) {
-        printfM("usage: [mpirun] %s <system.xml> <integrator.xml> <state.xml> <config.ini>\n", argv[0]);
+        printfM("usage: [mpirun] %s <system.xml> <integrator.xml> <state.xml|inp.nc> <config.ini>\n", argv[0]);
         MPI::Finalize();
         exit(0);
     }
 
     printUname();
-    fflush(stdout); MPI::COMM_WORLD.Barrier();
+    fflush(stdout);
+    MPI::COMM_WORLD.Barrier();
 
     // Get the config file
     ConfigOpts opts = parseConfigFile(argv[4]);
@@ -85,21 +86,32 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
         exitWithMessage("tungsten is only compatible with systems under temperature control\n");
 
     // Set the initial state
-    fstream stateXml(argv[3]);
-    if (stateXml == NULL) exitWithMessage("No such file or directory: '%s'\n", argv[1]);
-    State* state = XmlSerializer::deserialize<State>(stateXml);
-    context->setState(*state);
+    if (endswith(argv[3], ".nc")) {
+        printfM("(netCDF) Loading starting coordinates from: %s", argv[3]);
+        NetCDFTrajectoryFile nc(argv[3], "r", numAtoms);
+        int numFrames = nc.getNumFrames();
+        PositionsAndPeriodicBox s = nc.loadState(RANK % numFrames);
+        context->setPositions(s.positions);
+        context->setPeriodicBoxVectors(s.boxA, s.boxB, s.boxC);
+        context->setVelocitiesToTemperature(temperature);
+    } else {
+        printfM("(OpenMM xml) Loading starting coordinates from: %s", argv[3]);
+        fstream stateXml(argv[3]);
+        if (stateXml == NULL) exitWithMessage("No such file or directory: '%s'\n", argv[1]);
+        State* state = XmlSerializer::deserialize<State>(stateXml);
+        context->setState(*state);
+    }
 
     // Create the trajectory for our work on this one
     stringstream s;
-    s <<  opts.outputRootPath << "/trj-" << std::setw(FILENAME_NUMBER_WIDTH) << std::setfill('0') << rank << ".nc";
-    string fileName = s.str();
-    NetCDFTrajectoryFile file(fileName, "w", numAtoms);
+    s <<  opts.outputRootPath << "/trj-" << std::setw(FILENAME_NUMBER_WIDTH) << std::setfill('0') << RANK << ".nc";
+    NetCDFTrajectoryFile file(s.str().c_str(), "w", numAtoms);
 
     for (int round = 0; round < opts.numRounds; round++) {
         printfM("\n==================================\n");
         printfM("Running Adaptive Sampling Round %d\n", round+1);
         printfM("==================================\n\n");
+        context->setTime(0.0);
         file.write(context->getState(State::Positions, isPeriodic));
 
         time_t roundStartWallTime = time(NULL);
@@ -112,11 +124,11 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
         // note, using getTime() here relies on the fact that every round, we
         // reset the simulation clock to zero.
         double mdTime = context->getState(0).getTime();
-	double elapsedWallTime = difftime(roundEndWallTime, roundStartWallTime);
+        double elapsedWallTime = difftime(roundEndWallTime, roundStartWallTime);
         printfM("MD Performance: ");
         printPerformance(mdTime, elapsedWallTime);
         (*totalMDTime) += mdTime;
-	(*totalWallTimeInMD) += elapsedWallTime;
+        (*totalWallTimeInMD) += elapsedWallTime;
 
         // set up for the next round
         // Run clustering with a strude of 1
@@ -127,13 +139,12 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
         gindex newConformation = markovModel.scatterMinCountStates();
         printfM("Scattering new starting min-counts starting confs to each rank\n");
         printfM("--------------------------------------------------------------\n");
-        printfAOrd("Rank %d: received frame %d from rank %d\n", rank, newConformation.frame, newConformation.rank);
+        printfAOrd("Rank %d: received frame %d from rank %d\n", RANK, newConformation.frame, newConformation.rank);
 
         PositionsAndPeriodicBox s = file.loadNonlocalStateMPI(newConformation.rank, newConformation.frame);
         context->setPositions(s.positions);
         context->setPeriodicBoxVectors(s.boxA, s.boxB, s.boxC);
         context->setVelocitiesToTemperature(temperature);
-        context->setTime(0.0);
     }
     delete context;
 }
@@ -142,8 +153,8 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
 
 int main(int argc, char* argv[]) {
     MPI::Init(argc, argv);
-    const int rank = MPI::COMM_WORLD.Get_rank();
-    if (rank == MASTER) {
+    const int RANK = MPI::COMM_WORLD.Get_rank();
+    if (RANK == MASTER) {
         printf("Tungsten: Parallel Markov State Model Acceleraed Molecular Dynamics\n\n");
         printf("Copyright (C) 2013 Stanford University. This program\n");
         printf("comes with ABSOLUTELY NO WARRANTY. Tungsten is free\n");
@@ -160,7 +171,7 @@ int main(int argc, char* argv[]) {
         fflush(stdout);
         fflush(stderr);
         fprintf(stderr, "============================\n");
-        fprintf(stderr, "An exception was triggered on RANK=%d\n", rank);
+        fprintf(stderr, "An exception was triggered on RANK=%d\n", RANK);
         std::cerr << e.what() << std::endl;
         fprintf(stderr, "============================\n");
         fflush(stderr);
@@ -169,7 +180,7 @@ int main(int argc, char* argv[]) {
 
     time_t endWallTime = time(NULL);
     double elapsedWallTime = difftime(endWallTime, startWallTime);
-    
+
     double aggegateTimeInMD = 0;  // core*seconds in which we were *actually* running MD
     double aggregateWallTime = 0; // core*seconds which the process consumed overall
     MPI::COMM_WORLD.Reduce(&totalTimeInMD, &aggegateTimeInMD, 1, MPI_DOUBLE, MPI_SUM, MASTER);
@@ -178,7 +189,7 @@ int main(int argc, char* argv[]) {
     printfM("===================\n");
     printPerformance(totalMDTime, elapsedWallTime);
     printfM("Wall-Clock Efficiency (core*hours doing MD / core*hours overall): %.2f%%\n\n",
-	    100*(aggegateTimeInMD / aggregateWallTime));
+            100*(aggegateTimeInMD / aggregateWallTime));
 
     printfM("Starfleet out.\n");
     MPI::Finalize();

@@ -41,13 +41,47 @@ typedef struct {
 } ConfigOpts;
 
 
+/***************************************************************************/
+/***************************************************************************/
+//                  Generic tools (string processing, etc)
+/***************************************************************************/
+/***************************************************************************/
+
+
+int endswith(const char *str, const char *suffix);
+
+
+/***************************************************************************/
+/***************************************************************************/
+//                    Tungsten-specific IO Functions
+//     (MD simulation speed, interogating the OpenMM version on each rank)
+/***************************************************************************/
+/***************************************************************************/
+
+
 /**
- * Boot up an OpenMM context from a serialized System and Integrator. Reports
- * some output to stdout, and resets the random number seeds to ensure that
- * multiple trajectories initialized on different MPI ranks diverge from
- * each other.
+ * Print a description of this system, like a linux `uname`, to stdout
  */
-OpenMM::Context* createContext(std::ifstream& systemXml, std::ifstream& integratorXml, const std::string& platformName);
+void printUname(void);
+
+/**
+ * Calculate and print the performance of an MD simulation
+ * from the elapsed simulation time on each node (mdTime)
+ * and the elapsed wall time
+ */
+void printPerformance(double elapsedMDTime, double elapsedWallTime);
+
+/**
+ * Parse the config file
+ */
+ConfigOpts parseConfigFile(const char* configFileName);
+
+
+/***************************************************************************/
+/***************************************************************************/
+//                         MPI-aware IO Functions
+/***************************************************************************/
+/***************************************************************************/
 
 /**
  * Convenience method to exit the process, printing an error message on the
@@ -65,35 +99,6 @@ int printfM(const std::string& fmt, ...);
  * to the terminal ordered (first rank 0, then 1, etc)
  */
 int printfAOrd(const std::string& format, ...);
-
-/**
- * Calculate and print the performance of an MD simulation
- * from the elapsed simulation time on each node (mdTime)
- * and the elapsed wall time
- */
-void printPerformance(double elapsedMDTime, double elapsedWallTime);
-
-
-/**
- * Parse the config file
- */
-ConfigOpts parseConfigFile(const char* configFileName);
-
-/**
- * Does an OpenMM System contain periodic boundary conditions?
- */
-bool hasPeriodicBoundaries(const OpenMM::System& system);
-
-/**
- * Print a description of this system, like a linux `uname`, to stdout
- */
-void printUname(void);
-
-/**
- * Reset the random seed for any stochastic elements (mc barostat,
- * langevin integrator, etc) in the simulation.
- */
-void resetRandomNumberSeed(OpenMM::System* system, OpenMM::Integrator* integrator);
 
 /**
  * Print a each MPI rank's copy of a vector
@@ -120,6 +125,35 @@ template <typename T> void printMPIVector(std::vector<T> const & d, bool breif=t
         }
     }
 }
+
+
+/***************************************************************************/
+/***************************************************************************/
+//                          OpenMM functions
+/***************************************************************************/
+/***************************************************************************/
+
+
+/**
+ * Boot up an OpenMM context from a serialized System and Integrator. Reports
+ * some output to stdout, and resets the random number seeds to ensure that
+ * multiple trajectories initialized on different MPI ranks diverge from
+ * each other.
+ */
+OpenMM::Context* createContext(std::ifstream& systemXml, std::ifstream& integratorXml, const std::string& platformName);
+
+
+/**
+ * Does an OpenMM System contain periodic boundary conditions?
+ */
+bool hasPeriodicBoundaries(const OpenMM::System& system);
+
+
+/**
+ * Reset the random seed for any stochastic elements (mc barostat,
+ * langevin integrator, etc) in the simulation.
+ */
+void resetRandomNumberSeed(OpenMM::System* system, OpenMM::Integrator* integrator);
 
 /**
  * Get the target temperature of an OpenMM simulation. A value of -1 is

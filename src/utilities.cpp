@@ -54,32 +54,15 @@ using OpenMM::Integrator;
 using OpenMM::XmlSerializer;
 
 
-Context* createContext(ifstream& systemXml, ifstream& integratorXml, const string& platformName) {
-    const int rank = MPI::COMM_WORLD.Get_rank();
-    Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
-
-    Platform* platform;
-    System* system = XmlSerializer::deserialize<OpenMM::System>(systemXml);
-    Integrator* integrator =XmlSerializer::deserialize<OpenMM::Integrator>(integratorXml);
-    resetRandomNumberSeed(system, integrator);
-    try {
-     platform = &Platform::getPlatformByName(platformName);
-    } catch (OpenMM::OpenMMException e) {
-        printf("An exception occured on rank=%d: %s\n", rank, e.what());
-        exitWithMessage("Exit Failure");
-    }
-    Context* context = new Context(*system, *integrator, *platform);
-
-    if (rank == MASTER) {
-        printf("\nContext created on OpenMM platform: %s\n", (*context).getPlatform().getName().c_str());
-        vector<string> names = (*context).getPlatform().getPropertyNames();
-        for (int i = 0; i < names.size(); i++) {
-            string value = (*context).getPlatform().getPropertyValue(*context, names[i]);
-            printf("  %s: %s\n", names[i].c_str(), value.c_str());
-        }
-    }
-
-    return context;
+int endswith(const char *str, const char *suffix) {
+    // http://stackoverflow.com/a/744822/1079728
+    if (!str || !suffix)
+        return 0;
+    size_t lenstr = strlen(str);
+    size_t lensuffix = strlen(suffix);
+    if (lensuffix >  lenstr)
+        return 0;
+    return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
 }
 
 
@@ -91,13 +74,14 @@ void exitWithMessage(const string& format, ...) {
     if (rank == MASTER) {
         fprintf(stderr, "!=======================================================!\n");
         r = vfprintf(stderr, format.c_str(), args);
-	fprintf(stderr, "\n");
+        fprintf(stderr, "\n");
         fprintf(stderr, "!=======================================================!\n");
     }
     va_end(args);
     fflush(stderr);
     MPI::COMM_WORLD.Abort(EXIT_FAILURE);
 }
+
 
 int printfM(const string& format, ...) {
     const int rank = MPI::COMM_WORLD.Get_rank();
@@ -109,6 +93,7 @@ int printfM(const string& format, ...) {
     va_end(args);
     return r;
 }
+
 
 int printfAOrd(const string& format, ...) {
     const int rank = MPI::COMM_WORLD.Get_rank();
@@ -129,6 +114,25 @@ int printfAOrd(const string& format, ...) {
 
     va_end(args);
     return r;
+}
+
+
+void printUname(void) {
+    const int rank = MPI::COMM_WORLD.Get_rank();
+    const int size = MPI::COMM_WORLD.Get_size();
+    struct utsname sysinfo;
+    uname(&sysinfo);
+
+    for (int i = 0; i < size; i++) {
+        MPI::COMM_WORLD.Barrier();
+        if (i == rank) {
+            printf("Rank %d Information\n", rank);
+            printf("  System: %s %s %s\n", sysinfo.sysname, sysinfo.release, sysinfo.machine);
+            printf("  Host Name: %s\n", sysinfo.nodename);
+            printf("  OMP_NUM_THREADS: %s\n", getenv("OMP_NUM_THREADS"));
+            printf("  OpenMM Version: %s\n", Platform::getOpenMMVersion().c_str());
+        }
+    }
 }
 
 
@@ -175,7 +179,7 @@ ConfigOpts parseConfigFile(const char* configFileName) {
         ifstream is(buf);
         if (!is) {
             stringstream ss;
-            ss << "cannot access " << buf << ": No such file or directory";
+            ss << "cannot access " << buf << ": No such file or directory." << std::endl; 
             exitWithMessage(ss.str());
         }
         std::istream_iterator<int> start(is), end;
@@ -193,6 +197,35 @@ ConfigOpts parseConfigFile(const char* configFileName) {
         exitWithMessage("numStepsPerWrite must be given and greater than 0");
 
     return out;
+}
+
+
+Context* createContext(ifstream& systemXml, ifstream& integratorXml, const string& platformName) {
+    const int rank = MPI::COMM_WORLD.Get_rank();
+    Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
+
+    Platform* platform;
+    System* system = XmlSerializer::deserialize<OpenMM::System>(systemXml);
+    Integrator* integrator =XmlSerializer::deserialize<OpenMM::Integrator>(integratorXml);
+    resetRandomNumberSeed(system, integrator);
+    try {
+     platform = &Platform::getPlatformByName(platformName);
+    } catch (OpenMM::OpenMMException e) {
+        printf("An exception occured on rank=%d: %s\n", rank, e.what());
+        exitWithMessage("Exit Failure");
+    }
+    Context* context = new Context(*system, *integrator, *platform);
+
+    if (rank == MASTER) {
+        printf("\nContext created on OpenMM platform: %s\n", (*context).getPlatform().getName().c_str());
+        vector<string> names = (*context).getPlatform().getPropertyNames();
+        for (int i = 0; i < names.size(); i++) {
+            string value = (*context).getPlatform().getPropertyValue(*context, names[i]);
+            printf("  %s: %s\n", names[i].c_str(), value.c_str());
+        }
+    }
+
+    return context;
 }
 
 
@@ -221,25 +254,6 @@ bool hasPeriodicBoundaries(const System& system) {
         }
     }
     return isPeriodic;
-}
-
-
-void printUname(void) {
-    const int rank = MPI::COMM_WORLD.Get_rank();
-    const int size = MPI::COMM_WORLD.Get_size();
-    struct utsname sysinfo;
-    uname(&sysinfo);
-
-    for (int i = 0; i < size; i++) {
-        MPI::COMM_WORLD.Barrier();
-        if (i == rank) {
-            printf("Rank %d Information\n", rank);
-            printf("  System: %s %s %s\n", sysinfo.sysname, sysinfo.release, sysinfo.machine);
-            printf("  Host Name: %s\n", sysinfo.nodename);
-            printf("  OMP_NUM_THREADS: %s\n", getenv("OMP_NUM_THREADS"));
-            printf("  OpenMM Version: %s\n", Platform::getOpenMMVersion().c_str());
-        }
-    }
 }
 
 

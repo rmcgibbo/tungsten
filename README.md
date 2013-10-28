@@ -23,6 +23,18 @@ for the simulation. These files can be constructed from an RCSB PDB, amber
 python app. You can modify and use the script `examples/buildTungstenXML.py`,
 included with the tungsten source.
 
+Note: In place of `state.xml`, you may the initial conditions for the
+simulations as a netCDF input trajectory, which *must* end in the `.nc`
+file extension.  If the input coordinates are given in `xml` format, each
+independent parallel processor in the tungsten job will use the same starting
+coordinates. In contrast, when a multiframe netCDF trajectory as input, the
+frames from the input files will be "scattered" to the processors: the first
+processor will receive the first frame, the second processor the second frame,
+etc. Although not strictly necessary, the length of the input trajectory shou
+probably be equal to the number of parallel processors (otherwise some of the
+frames will be used twice if there are an excell of processors, or ignored if
+there are dearth).
+
 `tungsten` also requires a short configuration file, in a simple key=value
 format to specify, among other things, the frequency of clustering, the
 clustering RMSD cutoff, and the OpenMM platform to use (e.g. CUDA, OpenCL,

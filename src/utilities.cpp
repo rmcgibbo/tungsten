@@ -136,12 +136,12 @@ void printUname(void) {
 }
 
 
-void printPerformance(double elapsedMDTime, double elapsedWallTime) {
+void printPerformance(double elapsedMDTime, double elapsedWallSeconds) {
     const int size = MPI::COMM_WORLD.Get_size();
     const int rank = MPI::COMM_WORLD.Get_rank();
     static const double SEC_PER_DAY = 86400.0;
     // number of simulated ns per day of wall time
-    double nsPerDay = (elapsedMDTime/1000.0) / elapsedWallTime;
+    double nsPerDay = (elapsedMDTime/1000.0) / (elapsedWallSeconds / SEC_PER_DAY);
     vector<double> recvBuffer(size);
     MPI::COMM_WORLD.Gather(&nsPerDay, 1, MPI_DOUBLE, &recvBuffer[0], 1, MPI_DOUBLE, MASTER);
     if (rank == MASTER) {

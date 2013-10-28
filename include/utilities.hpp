@@ -65,11 +65,11 @@ int endswith(const char *str, const char *suffix);
 void printUname(void);
 
 /**
- * Calculate and print the performance of an MD simulation
- * from the elapsed simulation time on each node (mdTime)
- * and the elapsed wall time
+ * Calculate and print the performance of an MD simulation from the elapsed
+ * simulation time on each node (mdTime, in picoseconds) and the elapsed wall
+ * time, in seconds.
  */
-void printPerformance(double elapsedMDTime, double elapsedWallTime);
+void printPerformance(double elapsedMDTime, double elapsedWallSeconds);
 
 /**
  * Parse the config file

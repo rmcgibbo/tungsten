@@ -87,7 +87,7 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
 
     // Set the initial state
     if (endswith(argv[3], ".nc")) {
-        printfM("(netCDF) Loading starting coordinates from: %s", argv[3]);
+        printfM("\n(netCDF) Loading starting coordinates from: %s\n", argv[3]);
         NetCDFTrajectoryFile nc(argv[3], "r", numAtoms);
         int numFrames = nc.getNumFrames();
         PositionsAndPeriodicBox s = nc.loadState(RANK % numFrames);
@@ -95,7 +95,7 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
         context->setPeriodicBoxVectors(s.boxA, s.boxB, s.boxC);
         context->setVelocitiesToTemperature(temperature);
     } else {
-        printfM("(OpenMM xml) Loading starting coordinates from: %s", argv[3]);
+        printfM("\n(OpenMM xml) Loading starting coordinates from: %s\n", argv[3]);
         fstream stateXml(argv[3]);
         if (stateXml == NULL) exitWithMessage("No such file or directory: '%s'\n", argv[1]);
         State* state = XmlSerializer::deserialize<State>(stateXml);
@@ -108,9 +108,9 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
     NetCDFTrajectoryFile file(s.str().c_str(), "w", numAtoms);
 
     for (int round = 0; round < opts.numRounds; round++) {
-        printfM("\n==================================\n");
-        printfM("Running Adaptive Sampling Round %d\n", round+1);
-        printfM("==================================\n\n");
+        printfM("\n====================================\n");
+        printfM("Running Adaptive Sampling Round %3d\n", round+1);
+        printfM("====================================\n\n");
         context->setTime(0.0);
         file.write(context->getState(State::Positions, isPeriodic));
 
@@ -136,10 +136,9 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
         ParallelKCenters clusterer(file, 1, opts.kcentersRmsdIndices);
         clusterer.cluster(opts.kcentersRmsdCutoff, 0, 0);
         ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters(), file.loadTime());
-        gindex newConformation = markovModel.scatterMinCountStates();
         printfM("Scattering new starting min-counts starting confs to each rank\n");
         printfM("--------------------------------------------------------------\n");
-        printfAOrd("Rank %d: received frame %d from rank %d\n", RANK, newConformation.frame, newConformation.rank);
+        gindex newConformation = markovModel.scatterMinCountStates();
 
         PositionsAndPeriodicBox s = file.loadNonlocalStateMPI(newConformation.rank, newConformation.frame);
         context->setPositions(s.positions);

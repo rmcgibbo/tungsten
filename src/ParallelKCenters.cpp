@@ -21,7 +21,9 @@
 // Contributors:
 
 #include "mpi.h"
+#ifdef _OPENMP
 #include "omp.h"
+#endif //_OPENMP
 #include <math.h>
 #include <cstdlib>
 #include <limits>
@@ -33,6 +35,7 @@
 #include "aligned_allocator.hpp"
 #include "NetCDFTrajectoryFile.hpp"
 #include "ParallelKCenters.hpp"
+#include "MPIReductions.hpp"
 #include "theobald_rmsd.h"
 #if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
 #include <sys/time.h>
@@ -48,53 +51,6 @@ using std::copy;
 
 static const int MASTER = 0;
 static const int MAX_KCENTERS_LINES = 10;
-
-typedef struct {
-    int rank;
-    int frame;
-    float value;
-} triplet;
-
-/* *
- * MPI Parallel Reduction. Each rank provides input data, and the return
- * value, on each node, is a triplet containing the rank, index and value of
- * the maximum entry. It's a global argmax.
- */
-static triplet maxLocAllReduce(const vector<float>& input) {
-    static const int rank = MPI::COMM_WORLD.Get_rank();
-    struct {
-        float value;
-        int   index;
-    } localMaxLoc, globalMaxLoc;
-    int trajLength = input.size();
-    int maxTrajLength;
-
-    // Share the longest trajectory length with all of the nodes so that
-    // each can properly compute a unique index of
-    // localIndex + rank*maxLengthOfAnyLocalIndex
-    MPI::COMM_WORLD.Allreduce(&trajLength, &maxTrajLength, 1, MPI_INT, MPI_MAX);
-
-    // local maxloc
-    localMaxLoc.value = input[0];
-    localMaxLoc.index = 0;
-    for (int i = 1; i < trajLength; i++)
-        if (localMaxLoc.value < input[i]) {
-            localMaxLoc.value = input[i];
-            localMaxLoc.index = i;
-        }
-
-    // give the local maxloc a globaly-resolvably index
-    localMaxLoc.index = localMaxLoc.index + rank * maxTrajLength;
-
-    // global maxloc
-    MPI::COMM_WORLD.Allreduce(&localMaxLoc, &globalMaxLoc, 1, MPI_FLOAT_INT, MPI_MAXLOC);
-    int outRank = globalMaxLoc.index / maxTrajLength;
-    int outFrame = globalMaxLoc.index % maxTrajLength;
-    float outValue = globalMaxLoc.value;
-
-    triplet t = {outRank, outFrame, outValue};
-    return t;
-}
 
 
 ParallelKCenters::ParallelKCenters(const NetCDFTrajectoryFile& ncTraj,
@@ -136,7 +92,7 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
 #endif
 
     for (int i = 0; true; i++) {
-        triplet max = maxLocAllReduce(distances);
+        triplet max = MPIvectorAllMaxloc(distances);
 
         if (i > 0 && i < MAX_KCENTERS_LINES)
             // don't print when the
@@ -233,7 +189,10 @@ vector<float> ParallelKCenters::getRmsdsFrom(int targetRank, int targetIndex) co
     MPI::COMM_WORLD.Bcast(&g, 1, MPI_FLOAT, targetRank);
 
     vector<float> result(numFrames_);
+
+    #ifdef _OPENMP
     #pragma omp for
+    #endif //_OPENMP
     for (int i = 0; i < numFrames_; i++)
         result[i] = sqrtf(msd_axis_major(numAtoms_, numPaddedAtoms_, numPaddedAtoms_,
                                          &frame[0], &coordinates_[i*numPaddedAtoms_*3],

@@ -30,6 +30,7 @@
 #include "csparse.h"
 #include "typedefs.hpp"
 #include "utilities.hpp"
+#include "MPIReductions.hpp"
 #include "ParallelMSM.hpp"
 #if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
 #include <sys/time.h>
@@ -45,8 +46,12 @@ using std::map;
 
 static const int MASTER = 0;
 
-// Utilities
-template <class T1, class T2> static bool pairComparatorSecond(const pair<T1, T2>& lhs, const pair<T1, T2>& rhs) {
+//////////////////////////////////////////////////////////////////////////////
+////                          Little Utilities                            ////
+//////////////////////////////////////////////////////////////////////////////
+
+template <class T1, class T2>
+static bool pairComparatorSecond(const pair<T1, T2>& lhs, const pair<T1, T2>& rhs) {
     return lhs.second < rhs.second;
 }
 
@@ -64,60 +69,6 @@ template <class T1, class T2> static bool pairComparatorSecond(const pair<T1, T2
   #define unlikely(x) (x)
 #endif /* __GNUC__ */
 
-
-static cs* csReduce(cs* m) {
-    const int SIZE = MPI::COMM_WORLD.Get_size();
-    const int RANK = MPI::COMM_WORLD.Get_rank();
-
-    // The matrices on each rank must have the same dimensions, and must be
-    // squre
-    const int numStates = m->n;
-
-    // Gather nzmax on root, the maximum number of entries
-    // each each rank's countsMatrix_
-    vector<int> rootNzmax(SIZE);
-    MPI::COMM_WORLD.Gather(&m->nzmax, 1, MPI_INT, &rootNzmax[0], 1, MPI_INT, MASTER);
-
-    cs* newCounts;
-    if (RANK != MASTER) {
-        // All of the slave nodes send their buffers to to MASTER
-        // for accumulation
-        MPI::COMM_WORLD.Isend(m->p, m->n+1, MPI_INT, MASTER, 0);
-        MPI::COMM_WORLD.Isend(m->i, m->nzmax, MPI_INT, MASTER, 1);
-        MPI::COMM_WORLD.Isend(m->x, m->nzmax, MPI_DOUBLE, MASTER, 2);
-    } else {
-        for (int j = 1; j < SIZE; j++) {
-            // The master node receives these entries and uses them to
-            // reconstruct a sparse matrix, using cs_add to then
-            // add it to its own.
-            vector<int> p(numStates+1);
-            vector<int> i(rootNzmax[j]);
-            vector<double> x(rootNzmax[j]);
-            MPI::Request rP, rI, rX;
-            rP = MPI::COMM_WORLD.Irecv(&p[0], numStates+1, MPI_INT, j, 0);
-            rI = MPI::COMM_WORLD.Irecv(&i[0], rootNzmax[j], MPI_INT, j, 1);
-            rX = MPI::COMM_WORLD.Irecv(&x[0], rootNzmax[j], MPI_DOUBLE, j, 2);
-            rP.Wait();
-            rI.Wait();
-            rX.Wait();
-
-            // place this data in a struct
-            cs M;
-            M.nzmax = rootNzmax[j];
-            M.m = numStates;
-            M.n = numStates;
-            M.p = &p[0];
-            M.i = &i[0];
-            M.x = &x[0];
-            M.nz = -1;
-
-            newCounts = cs_add(m, &M, 1.0, 1.0);
-            cs_free(m);
-            m = newCounts;
-        }
-    }
-    return m;
-}
 
 //////////////////////////////////////////////////////////////////////////////
 ////                        Class implementation                          ////
@@ -220,7 +171,8 @@ void ParallelMSM::computeTransitionCounts() {
     cs_dupl(countsMatrix_);
     cs_free(T);
 
-    countsMatrix_ = csReduce(countsMatrix_);
+    //countsMatrix_ = MPIcsAdd_efficient(countsMatrix_);
+    countsMatrix_ = MPIcsAdd(countsMatrix_);
 
 #if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
     struct timeval endTime;

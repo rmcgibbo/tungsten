@@ -1,33 +1,35 @@
-// Copyright 2011 Stanford University
+/////////////////////////////////////////////////////////////////////////////
+// MDTraj: A Python Library for Loading, Saving, and Manipulating
+//         Molecular Dynamics Trajectories.
+// Copyright 2012-2013 Stanford University and the Authors
 //
-// IRMSD is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 2 of the License, or
-// (at your option) any later version.
+// Authors: Imran S. Haque
+// Contributors: John D. Chodera, Kyle Beauchamp, Peter Kasson,
+//               Kai Kohlhoff, Jonathan Zrake, Robert McGibbon
 //
-// This program is distributed in the hope that it will be useful,
+// MDTraj is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as
+// published by the Free Software Foundation, either version 2.1
+// of the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// GNU Lesser General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+// You should have received a copy of the GNU Lesser General Public
+// License along with MDTraj. If not, see <http://www.gnu.org/licenses/>.
+///////////////////////////////////////////////////////////////////////////////
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Calculation of RMSD by a the quaternion-based characteristic polynomial
+// (QCP) algorithm of Theobald [1].
 //
-//=============================================================================================
-// Calculation of RMSD by a the quaternion-based characteristic polynomial (QCP) algorithm of Theobald [1].
-// 
-// [1] Theobald DL. Rapid calculation of RMSDs using a quaternion-based characteristic polynomial. 
-//     Acta Cryst., A61:478, 2005.  doi:10.1107/50108767305015266
-//
-// Contributions from:
-//      John D. Chodera <jchodera AT gmail.com>, Dill lab, UCSF, 2006.
-//      Kyle Beauchamp(kyleb AT stanford.edu)
-//      Peter Kasson (kasson AT stanford.edu)
-//      Kai Kohlhoff (kohlhoff AT stanford.edu)
-//      Imran Haque  (ihaque AT cs.stanford.edu)
-//=============================================================================================
+// [1] Theobald DL. Rapid calculation of RMSDs using a quaternion-based
+//     characteristic polynomial. Acta Cryst., A61:478, 2005.
+//     doi:10.1107/50108767305015266
+///////////////////////////////////////////////////////////////////////////////
 
 #include "msvccompat.h"
 #include <assert.h>

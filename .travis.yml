@@ -4,22 +4,12 @@ before_install:
   - sudo apt-get install openmpi-bin libopenmpi-dev libnetcdf-dev netcdf-bin
   - sudo apt-get install cmake clang
 
-  - wget http://valgrind.org/downloads/valgrind-3.8.1.tar.bz2
-  - tar-xjvf valgrind-3.8.1.tar.bz2
-  - cd valgrind-3.8.1/
-  - ./configure --with-mpicc=mpicc
-  - make -j4
-  - sudo make install
-  - cd .. && rm -rf valgrind-3.8.1/
-  - sudo updatedb
-  - export LD_PRELOAD=`locate libmpiwrap` 
-
 install:
   - cmake . -DCMAKE_BUILD_TYPE=Debug
   - make
 
 script:
-  - ctest
+  - ctest -V
 
 env:
   -OMPI_CXX=clang++

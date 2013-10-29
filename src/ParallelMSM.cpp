@@ -171,8 +171,8 @@ void ParallelMSM::computeTransitionCounts() {
     cs_dupl(countsMatrix_);
     cs_free(T);
 
-    //countsMatrix_ = MPIcsAdd_efficient(countsMatrix_);
-    countsMatrix_ = MPIcsAdd(countsMatrix_);
+    //countsMatrix_ = MPI_csAdd_efficient(countsMatrix_);
+    countsMatrix_ = MPI_csAdd(countsMatrix_);
 
 #if defined(HAVE_SYS_TIME_H) && defined(HAVE_GETTIMEOFDAY)
     struct timeval endTime;

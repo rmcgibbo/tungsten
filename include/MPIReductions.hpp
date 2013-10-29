@@ -33,11 +33,11 @@ typedef struct {
     float value;
 } triplet;
 
-triplet MPIvectorAllMaxloc(const std::vector<float>& input);
+triplet MPI_vectorAllMaxloc(const std::vector<float>& input);
 
-cs* MPIcsAdd_efficient(cs* m);
+cs* MPI_csAdd_efficient(cs* m);
 
-cs* MPIcsAdd(cs* m);
+cs* MPI_csAdd(cs* m);
 
 } // namespace Tungsten
 #endif

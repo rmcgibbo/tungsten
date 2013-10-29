@@ -40,7 +40,7 @@ static const int MASTER = 0;
  * value, on each node, is a triplet containing the rank, index and value of
  * the maximum entry. It's a global argmax.
  */
-triplet MPIvectorAllMaxloc(const vector<float>& input) {
+triplet MPI_vectorAllMaxloc(const vector<float>& input) {
     static const int rank = MPI::COMM_WORLD.Get_rank();
     struct {
         float value;
@@ -82,7 +82,7 @@ triplet MPIvectorAllMaxloc(const vector<float>& input) {
 //////////////////////////////////////////////////////////////////////////////
 
 
-cs* MPIcsAdd_efficient(cs* m) {
+cs* MPI_csAdd_efficient(cs* m) {
     const int SIZE = MPI::COMM_WORLD.Get_size();
     const int RANK = MPI::COMM_WORLD.Get_rank();
     const int numStates = m->n;
@@ -165,7 +165,7 @@ cs* MPIcsAdd_efficient(cs* m) {
 }
 
 
-cs* MPIcsAdd(cs* m) {
+cs* MPI_csAdd(cs* m) {
     const int SIZE = MPI::COMM_WORLD.Get_size();
     const int RANK = MPI::COMM_WORLD.Get_rank();
 

@@ -36,7 +36,7 @@ void test_MPIvectorAllMaxloc() {
 
     MPI::COMM_WORLD.Scatter(&sendbuf[0], recvLength, MPI_FLOAT,
                             &recvbuf[0], recvLength, MPI_FLOAT, 0);
-    triplet t = MPIvectorAllMaxloc(recvbuf);
+    triplet t = MPI_vectorAllMaxloc(recvbuf);
     if (RANK == 0)
         ASSERT_EQUAL(trueMax, t.value);
 }
@@ -71,9 +71,9 @@ int test_MPIcsAdd(const std::string& method) {
 
     cs* result;
     if (method.compare("naive") == 0)
-        result = MPIcsAdd(M);
+        result = MPI_csAdd(M);
     else if (method.compare("efficient") == 0)
-        result = MPIcsAdd_efficient(M);
+        result = MPI_csAdd_efficient(M);
 
     if (RANK == MASTER) {
         // compute the expected result by adding

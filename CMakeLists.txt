@@ -73,7 +73,3 @@ endforeach(target ${TARGETS})
 add_test(TestReductions2 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 TestReductions)
 add_test(TestReductions5 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 5 TestReductions)
 
-option(USE_VALGRID "Use Valgrind during test" ON)
-#if(USE_VALGRIND)
-  add_test(TestReductions2-valgrind ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 valgrind --error-exitcode=1 --track-origins=yes ./TestReductions)
-#endif(USE_VALGRIND)

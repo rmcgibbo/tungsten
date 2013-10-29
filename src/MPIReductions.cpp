@@ -21,6 +21,7 @@
 // Contributors:
 
 #include "mpi.h"
+#include "stdint.h"
 #include <vector>
 #include "MPIReductions.hpp"
 

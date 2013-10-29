@@ -29,7 +29,7 @@ namespace Tungsten {
 
 typedef struct {
     int rank;
-    int frame;
+    int index;
     float value;
 } triplet;
 

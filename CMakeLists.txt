@@ -16,6 +16,7 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 # Find all of our dependencies
 find_package(MPI)
+set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
 find_package(NetCDF)
 find_package(OpenMM)
 find_package(OpenMP)
@@ -37,25 +38,42 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.h.in
 
 # set the source directory
 file(GLOB_RECURSE TUNGSTEN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*")
-add_executable (tungsten ${TUNGSTEN_SOURCES})
+add_executable(tungsten ${TUNGSTEN_SOURCES})
+
+# Testsing
+enable_testing()
+add_library(libtungsten ${TUNGSTEN_SOURCES})
+add_executable(TestReductions tests/TestReductions.cpp)
+target_link_libraries(TestReductions libtungsten)
+set(TARGETS tungsten TestReductions)
+
 
 # Our includes
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/rmsd/")
-
-# MPI include/link
-target_link_libraries(tungsten ${MPI_CXX_LIBRARIES})
-target_link_libraries(tungsten ${MPI_CXX_LIBRARIES})
+# MPI includes
 include_directories(${MPI_CXX_INCLUDE_PATH})
-set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
-
-# OpenMM include/link
+# OpenMM includes
 include_directories(${OpenMM_INCLUDE_PATH})
-target_link_libraries(tungsten ${OpenMM_LIBRARY})
-target_link_libraries(tungsten ${OpenMM_SERIALIZATION_LIBRARY})
-
-# NetCDF include/link
+# NetCDF includes
 include_directories(${NetCDF_INCLUDE_DIR})
 include_directories(${NetCDF_INCLUDE_DIRS})
-target_link_libraries(tungsten ${NetCDF_C_LIBRARY})
 
+foreach(target ${TARGETS})
+    # MPI link
+    target_link_libraries(${target} ${MPI_CXX_LIBRARIES})
+    target_link_libraries(${target} ${MPI_CXX_LIBRARIES})
+    # OpenMM /link
+    target_link_libraries(${target} ${OpenMM_LIBRARY})
+    target_link_libraries(${target} ${OpenMM_SERIALIZATION_LIBRARY})
+    # NetCDF link
+    target_link_libraries(${target} ${NetCDF_C_LIBRARY})
+endforeach(target ${TARGETS})
+
+add_test(TestReductions2 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 TestReductions)
+add_test(TestReductions5 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 5 TestReductions)
+
+option(USE_VALGRID "Use Valgrind during test" ON)
+#if(USE_VALGRIND)
+  add_test(TestReductions2-valgrind ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 valgrind --error-exitcode=1 --track-origins=yes ./TestReductions)
+#endif(USE_VALGRIND)

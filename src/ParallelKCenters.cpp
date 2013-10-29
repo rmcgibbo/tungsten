@@ -101,12 +101,12 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
             break;
 
         if (i > 0 && i < MAX_KCENTERS_LINES)
-            printfM("Found new center (%d, %d)\n", max.rank, max.frame);
+            printfM("Found new center (%d, %d)\n", max.rank, max.index);
         if (i == MAX_KCENTERS_LINES)
             printfM("... [truncating output] ...\n\n");
 
 
-        gindex newCenter = {max.rank,  max.frame};
+        gindex newCenter = {max.rank,  max.index};
         vector<float> newDistances = getRmsdsFrom(newCenter.rank, newCenter.frame);
         for (int j = 0; j < numFrames_; j++)
             if (newDistances[j] < distances[j]) {

@@ -1,4 +1,5 @@
 CMakeCache.txt
+CTestTestfile.cmake
 CMakeFiles/*
 .deps/
 src/rmsd/.deps/
@@ -8,3 +9,7 @@ tungsten
 data/trj-*.nc
 Makefile
 include/config.h
+TestCSparse
+TestReductions
+Testing/
+libobjects.a

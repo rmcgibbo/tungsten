@@ -23,6 +23,36 @@
 
 # include "csparse.h"
 
+double cs_get(const cs* A, int row, int col) {
+/*
+  Purpose:
+     CS_GET gets the entry in the matrix at (row, col)
+
+  Notes:
+    This function is *extremely* inefficient, and should not be used in
+    production code.
+     
+*/
+    int k;
+    int* Ai = A->i;
+    int* Ap = A->p;
+    double* Ax = A->x;
+    double result = 0;
+
+    if (A->nz > -1) {
+        // triplet form
+        for (k = 0; k < A->nz; k++)
+            if (Ai[k] == row && Ap[k] == col)
+                result += Ax[k];
+    } else {
+        // compressed-column format
+        for (k = Ap[col]; k < Ap[col+1]; k++) 
+            if (Ai[k] == row)
+                result += Ax[k];
+    }
+    return result;
+}
+
 cs *cs_add ( const cs *A, const cs *B, double alpha, double beta )
 /*
   Purpose:

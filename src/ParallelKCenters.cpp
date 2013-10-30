@@ -92,7 +92,7 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
 #endif
 
     for (int i = 0; true; i++) {
-        triplet max = MPIvectorAllMaxloc(distances);
+        triplet max = MPI_vectorAllMaxloc(distances);
 
         if (i > 0 && i < MAX_KCENTERS_LINES)
             // don't print when the

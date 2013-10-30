@@ -38,14 +38,20 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.h.in
 
 # set the source directory
 file(GLOB_RECURSE TUNGSTEN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*")
-add_executable(tungsten ${TUNGSTEN_SOURCES})
+add_library(objects ${TUNGSTEN_SOURCES})
+add_executable(tungsten "${CMAKE_CURRENT_SOURCE_DIR}/src/mainloop.cpp")
+target_link_libraries(tungsten objects)
+set(LINK_TARGETS tungsten)
 
 # Testsing
 enable_testing()
-add_library(libtungsten ${TUNGSTEN_SOURCES})
-add_executable(TestReductions tests/TestReductions.cpp)
-target_link_libraries(TestReductions libtungsten)
-set(TARGETS tungsten TestReductions)
+file(GLOB TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp")
+foreach(TEST_PROG ${TEST_SOURCES})
+  get_filename_component(TEST_ROOT ${TEST_PROG} NAME_WE)
+  add_executable(${TEST_ROOT} ${TEST_PROG})
+  target_link_libraries(${TEST_ROOT} objects)
+  list(APPEND LINK_TARGETS ${TEST_ROOT})
+endforeach(TEST_PROG ${TEST_SOURCES})
 
 
 # Our includes
@@ -59,7 +65,8 @@ include_directories(${OpenMM_INCLUDE_PATH})
 include_directories(${NetCDF_INCLUDE_DIR})
 include_directories(${NetCDF_INCLUDE_DIRS})
 
-foreach(target ${TARGETS})
+
+foreach(target ${LINK_TARGETS})
     # MPI link
     target_link_libraries(${target} ${MPI_CXX_LIBRARIES})
     target_link_libraries(${target} ${MPI_CXX_LIBRARIES})
@@ -68,8 +75,10 @@ foreach(target ${TARGETS})
     target_link_libraries(${target} ${OpenMM_SERIALIZATION_LIBRARY})
     # NetCDF link
     target_link_libraries(${target} ${NetCDF_C_LIBRARY})
-endforeach(target ${TARGETS})
+endforeach(target ${LINK_TARGETS})
 
-add_test(TestReductions2 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 TestReductions)
-add_test(TestReductions5 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 5 TestReductions)
-
+add_test(TestCSparse TestCSparse)
+add_test(TestReductions-np4 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 4 TestReductions)
+add_test(TestReductions-np7 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 7 TestReductions)
+add_test(TestReductions-np8 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 8 TestReductions)
+add_test(TestReductions-np11 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 11 TestReductions)

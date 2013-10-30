@@ -40,7 +40,7 @@ static const int MASTER = 0;
  * value, on each node, is a triplet containing the rank, index and value of
  * the maximum entry. It's a global argmax.
  */
-triplet MPIvectorAllMaxloc(const vector<float>& input) {
+triplet MPI_vectorAllMaxloc(const vector<float>& input) {
     static const int rank = MPI::COMM_WORLD.Get_rank();
     struct {
         float value;
@@ -82,39 +82,42 @@ triplet MPIvectorAllMaxloc(const vector<float>& input) {
 //////////////////////////////////////////////////////////////////////////////
 
 
-cs* MPIcsAdd_efficient(cs* m) {
+cs* MPI_csAdd_efficient(cs* m) {
     const int SIZE = MPI::COMM_WORLD.Get_size();
     const int RANK = MPI::COMM_WORLD.Get_rank();
     const int numStates = m->n;
     const int lastpower = 1 << fastlog2(SIZE);
     MPI::Request rP, rI, rX;
 
-    vector<int> Nzmax(SIZE);
-    MPI::COMM_WORLD.Allgather(&m->nzmax, 1, MPI_INT, &Nzmax[0], 1, MPI_INT);
+    //vector<int> Nzmax(SIZE);
+    //MPI::COMM_WORLD.Allgather(&m->nzmax, 1, MPI_INT, &Nzmax[0], 1, MPI_INT);
 
     // each of the ranks greater than the last power of 2 less than size
     // need to downshift their data, since the binary tree reduction below
     // only works when N is a power of two.
     for (int i = lastpower; i < SIZE; i++)
         if (RANK == i) {
-            MPI::COMM_WORLD.Isend(m->p, m->n+1,   MPI_INT,    i-lastpower, 0);
-            MPI::COMM_WORLD.Isend(m->i, m->nzmax, MPI_INT,    i-lastpower, 1);
-            MPI::COMM_WORLD.Isend(m->x, m->nzmax, MPI_DOUBLE, i-lastpower, 2);
+            MPI::COMM_WORLD.Isend(&m->nzmax, 1,   MPI_INT,    i-lastpower, 0);
+            MPI::COMM_WORLD.Isend(m->p, m->n+1,   MPI_INT,    i-lastpower, 1);
+            MPI::COMM_WORLD.Isend(m->i, m->nzmax, MPI_INT,    i-lastpower, 2);
+            MPI::COMM_WORLD.Isend(m->x, m->nzmax, MPI_DOUBLE, i-lastpower, 3);
         }
     for (int i = 0; i < SIZE-lastpower; i++)
         if (RANK == i) {
+            int recvnzmax;
+            MPI::COMM_WORLD.Irecv(&recvnzmax,  1,  MPI_INT, i+lastpower, 0).Wait();
             vector<int>    p(numStates+1);
-            vector<int>   ii(Nzmax[i+lastpower]);
-            vector<double> x(Nzmax[i+lastpower]);
-            rP = MPI::COMM_WORLD.Irecv(&p[0],  numStates+1,        MPI_INT,    i+lastpower, 0);
-            rI = MPI::COMM_WORLD.Irecv(&ii[0], Nzmax[i+lastpower], MPI_INT,    i+lastpower, 1);
-            rX = MPI::COMM_WORLD.Irecv(&x[0],  Nzmax[i+lastpower], MPI_DOUBLE, i+lastpower, 2);
+            vector<int>   ii(recvnzmax);
+            vector<double> x(recvnzmax);
+            rP = MPI::COMM_WORLD.Irecv(&p[0],  numStates+1, MPI_INT,    i+lastpower, 1);
+            rI = MPI::COMM_WORLD.Irecv(&ii[0], recvnzmax,   MPI_INT,    i+lastpower, 2);
+            rX = MPI::COMM_WORLD.Irecv(&x[0],  recvnzmax,   MPI_DOUBLE, i+lastpower, 3);
             rP.Wait();
             rI.Wait();
             rX.Wait();
 
             cs M;
-            M.nzmax = Nzmax[i+lastpower];
+            M.nzmax = recvnzmax;
             M.m = numStates;
             M.n = numStates;
             M.p = &p[0];
@@ -133,22 +136,25 @@ cs* MPIcsAdd_efficient(cs* m) {
             const int sender = k + (1 << d);
 
             if (RANK == sender) {
-                MPI::COMM_WORLD.Isend(m->p, m->n+1,   MPI_INT,    receiver, 0);
-                MPI::COMM_WORLD.Isend(m->i, m->nzmax, MPI_INT,    receiver, 1);
-                MPI::COMM_WORLD.Isend(m->x, m->nzmax, MPI_DOUBLE, receiver, 2);
+                MPI::COMM_WORLD.Isend(&m->nzmax, 1,   MPI_INT,    receiver, 0);
+                MPI::COMM_WORLD.Isend(m->p, m->n+1,   MPI_INT,    receiver, 1);
+                MPI::COMM_WORLD.Isend(m->i, m->nzmax, MPI_INT,    receiver, 2);
+                MPI::COMM_WORLD.Isend(m->x, m->nzmax, MPI_DOUBLE, receiver, 3);
             } else if (RANK == receiver) {
+                int recvnzmax;
+                MPI::COMM_WORLD.Irecv(&recvnzmax,  1,  MPI_INT, sender, 0).Wait();
                 vector<int>    p(numStates+1);
-                vector<int>   ii(Nzmax[sender]);
-                vector<double> x(Nzmax[sender]);
-                rP = MPI::COMM_WORLD.Irecv(&p[0],  numStates+1,   MPI_INT,    sender, 0);
-                rI = MPI::COMM_WORLD.Irecv(&ii[0], Nzmax[sender], MPI_INT,    sender, 1);
-                rX = MPI::COMM_WORLD.Irecv(&x[0],  Nzmax[sender], MPI_DOUBLE, sender, 2);
+                vector<int>   ii(recvnzmax);
+                vector<double> x(recvnzmax);
+                rP = MPI::COMM_WORLD.Irecv(&p[0],  numStates+1, MPI_INT,    sender, 1);
+                rI = MPI::COMM_WORLD.Irecv(&ii[0], recvnzmax,   MPI_INT,    sender, 2);
+                rX = MPI::COMM_WORLD.Irecv(&x[0],  recvnzmax,   MPI_DOUBLE, sender, 3);
                 rP.Wait();
                 rI.Wait();
                 rX.Wait();
 
                 cs M;
-                M.nzmax = Nzmax[sender];
+                M.nzmax = recvnzmax;
                 M.m = numStates;
                 M.n = numStates;
                 M.p = &p[0];
@@ -165,7 +171,7 @@ cs* MPIcsAdd_efficient(cs* m) {
 }
 
 
-cs* MPIcsAdd(cs* m) {
+cs* MPI_csAdd(cs* m) {
     const int SIZE = MPI::COMM_WORLD.Get_size();
     const int RANK = MPI::COMM_WORLD.Get_rank();
 

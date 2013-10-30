@@ -44,6 +44,7 @@ typedef struct cs_sparse    /* matrix in compressed-column or triplet form */
     int nz ;	    /* # of entries in triplet matrix, -1 for compressed-col */
 } cs ;
 
+double cs_get(const cs* A, int row, int col);
 cs *cs_add (const cs *A, const cs *B, double alpha, double beta) ;
 int cs_cholsol (const cs *A, double *b, int order) ;
 int cs_dupl (cs *A) ;

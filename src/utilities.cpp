@@ -25,6 +25,7 @@
 #include <mpi.h>
 #include <stdarg.h>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <utility>
 #include <iterator>

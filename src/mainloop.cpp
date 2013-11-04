@@ -132,9 +132,17 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
 
         // set up for the next round
         // Run clustering with a strude of 1
+        int numClusters = -1;
+        if (opts.kcentersNumClusterMultiplier > 0) {
+            int numFrames = file.getNumFrames();
+            int totalNumFrames = 0;
+            MPI::COMM_WORLD.Allreduce(&numFrames, &totalNumFrames, 1, MPI_INT, MPI_SUM);
+            numClusters = (int) (totalNumFrames * opts.kcentersNumClusterMultiplier);
+            printfM("Total numFrames=%d. numClusters=%d", totalNumFrames, numClusters);
+        }
 
         ParallelKCenters clusterer(file, 1, opts.kcentersRmsdIndices);
-        clusterer.cluster(opts.kcentersRmsdCutoff, 0, 0);
+        clusterer.cluster(opts.kcentersRmsdCutoff, numClusters, 0, 0);
         ParallelMSM markovModel(clusterer.getAssignments(), clusterer.getCenters(), file.loadTime());
         printfM("Scattering new starting min-counts starting confs to each rank\n");
         printfM("--------------------------------------------------------------\n");

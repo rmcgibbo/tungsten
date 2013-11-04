@@ -37,6 +37,7 @@ typedef struct {
     std::string outputRootPath;
     std::vector<int> kcentersRmsdIndices;
     double kcentersRmsdCutoff;
+    double kcentersNumClusterMultiplier;
     std::string openmmPlatform;
 } ConfigOpts;
 

@@ -171,7 +171,8 @@ ConfigOpts parseConfigFile(const char* configFileName) {
     out.numStepsPerWrite = reader.GetInteger("", "numStepsPerWrite", -1);
     out.outputRootPath = reader.Get("", "outputRootPath", ".");
     out.openmmPlatform = reader.Get("", "openmmPlatform", "Reference");
-    out.kcentersRmsdCutoff = reader.GetReal("", "kcentersRmsdCutoff", 1.0);
+    out.kcentersRmsdCutoff = reader.GetReal("", "kcentersRmsdCutoff", -1.0);
+    out.kcentersNumClusterMultiplier = reader.GetReal("", "kcentersNumClusterMultiplier", -1);
 
     const string& atom_indices_file = reader.Get("", "kcentersRmsdIndicesFile", "");
     if (atom_indices_file.size() > 0) {
@@ -196,7 +197,10 @@ ConfigOpts parseConfigFile(const char* configFileName) {
         exitWithMessage("numRounds must be given and greater than 0");
     if (out.numStepsPerWrite <= 0)
         exitWithMessage("numStepsPerWrite must be given and greater than 0");
-
+    if (out.kcentersRmsdCutoff <= 0 && out.kcentersNumClusterMultiplier <= 0)
+        exitWithMessage("One of kcentersRmsdCutoff or kcentersNumClusterMultiplier must be supplied and greater than zero.");
+    if (out.kcentersNumClusterMultiplier > 1)
+        exitWithMessage("kcentersNumClusterMultiplier must be less than 1.");
     return out;
 }
 

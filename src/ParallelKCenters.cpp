@@ -75,7 +75,9 @@ ParallelKCenters::ParallelKCenters(const NetCDFTrajectoryFile& ncTraj,
     computeTraces();
 }
 
-void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
+void ParallelKCenters::cluster(double rmsdCutoff, int numClusters,
+                               int seedRank, int seedIndex)
+{
     gindex newCenter = {seedRank, seedIndex};
     vector<float> distances(numFrames_);
     assignments_.resize(numFrames_);
@@ -90,8 +92,10 @@ void ParallelKCenters::cluster(double rmsdCutoff, int seedRank, int seedIndex) {
 #else
     time_t startTime = (NULL);
 #endif
+    if (numClusters < 0)
+        numClusters = std::numeric_limits<int>::max();
 
-    for (int i = 0; true; i++) {
+    for (int i = 0; i < numClusters; i++) {
         triplet max = MPI_vectorAllMaxloc(distances);
 
         if (i > 0 && i < MAX_KCENTERS_LINES)

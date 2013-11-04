@@ -63,15 +63,20 @@ public:
     /**
      * Run k-centers clustering
      *
-     * @param rmsdCutoff    New state will be added until the distance
-     *                      from every conformation to its assigned cluster
-     *                      center is less than this cutoff.
-     * @param seedRank      The zeroth cluster must be picked arbirarily for
-     *                      k-centers. seedRank and seedIndex specify it.
-     * @param seedIndex     The zeroth cluster must be picked arbirarily for
-     *                      k-centers. seedRank and seedIndex specify it.
+     * @param rmsdCutoff       New state will be added until the distance
+     *                         from every conformation to its assigned cluster
+     *                         center is less than this cutoff. Either rmsdCutoff
+     *                         or numClusters must be specified. If rmsdCutoff < 0
+     *                         it is ignored.
+     * @param numClusters      Find this many clusters. Either rmsdCutoff or numClusters
+     *                         must be specified. If numClusters < 0, it  is
+     *                         ignored.
+     * @param seedRank         The zeroth cluster must be picked arbirarily for
+     *                         k-centers. seedRank and seedIndex specify it.
+     * @param seedIndex        The zeroth cluster must be picked arbirarily for
+     *                         k-centers. seedRank and seedIndex specify it.
      */
-    void cluster(double rmsdCutoff, int seedRank, int seedIndex);
+    void cluster(double rmsdCutoff, int numClusters, int seedRank, int seedIndex);
 
     /**
      * Get the assignments for each conformation, the global index of the

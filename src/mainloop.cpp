@@ -53,6 +53,15 @@ static const int MASTER = 0;  // mpi master node, for all terminal IO
 // the output trajectories will be trj-00001.nc, with a width given here
 static const int FILENAME_NUMBER_WIDTH = 5;
 
+int MPI_allFilesExist(const string& str) {
+    int outputFileExists = fileExists(str);
+    int allOutputFilesExists;
+    bool startWithClustering;
+    MPI::COMM_WORLD.Allreduce(&outputFileExists, &allOutputFilesExists, 1, MPI_INT, MPI_LAND);
+    if (allOutputFilesExists)
+        return true;
+    return false;
+}
 
 void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD) {
     const int SIZE = MPI::COMM_WORLD.Get_size();
@@ -101,34 +110,44 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
         State* state = XmlSerializer::deserialize<State>(stateXml);
         context->setState(*state);
     }
-
-    // Create the trajectory for our work on this one
+    // Create per-node output trajectory
     stringstream s;
     s <<  opts.outputRootPath << "/trj-" << std::setw(FILENAME_NUMBER_WIDTH) << std::setfill('0') << RANK << ".nc";
     NetCDFTrajectoryFile file(s.str().c_str(), "w", numAtoms);
+    int localStartWithClustering = (file.getNumFrames() > 1);
+    int startWithClustering = 0;
+    MPI::COMM_WORLD.Allreduce(&localStartWithClustering, &startWithClustering, 1, MPI_INT, MPI_LAND);
 
     for (int round = 0; round < opts.numRounds; round++) {
-        printfM("\n====================================\n");
-        printfM("Running Adaptive Sampling Round %3d\n", round+1);
-        printfM("====================================\n\n");
-        context->setTime(0.0);
-        file.write(context->getState(State::Positions, isPeriodic));
-
-        time_t roundStartWallTime = time(NULL);
-        for (int step = 0; step < opts.numStepsPerRound; step += opts.numStepsPerWrite) {
-            integrator.step(opts.numStepsPerWrite);
+        if (startWithClustering) {
+            printfM("\n====================================\n");
+            printfM("Skipping simulation round %d and\n", round+1);
+            printfM("proceeding straight to clustering\n");
+            printfM("====================================\n\n");
+            startWithClustering = 0;
+        } else {
+            printfM("\n====================================\n");
+            printfM("Running Adaptive Sampling Round %3d\n", round+1);
+            printfM("====================================\n\n");
+            context->setTime(0.0);
             file.write(context->getState(State::Positions, isPeriodic));
-            file.flush();
+
+            time_t roundStartWallTime = time(NULL);
+            for (int step = 0; step < opts.numStepsPerRound; step += opts.numStepsPerWrite) {
+                integrator.step(opts.numStepsPerWrite);
+                file.write(context->getState(State::Positions, isPeriodic));
+                file.flush();
+            }
+            time_t roundEndWallTime = time(NULL);
+            // note, using getTime() here relies on the fact that every round, we
+            // reset the simulation clock to zero.
+            double mdTime = context->getState(0).getTime();
+            double elapsedWallTime = difftime(roundEndWallTime, roundStartWallTime);
+            printfM("MD Performance: ");
+            printPerformance(mdTime, elapsedWallTime);
+            (*totalMDTime) += mdTime;
+            (*totalWallTimeInMD) += elapsedWallTime;
         }
-        time_t roundEndWallTime = time(NULL);
-        // note, using getTime() here relies on the fact that every round, we
-        // reset the simulation clock to zero.
-        double mdTime = context->getState(0).getTime();
-        double elapsedWallTime = difftime(roundEndWallTime, roundStartWallTime);
-        printfM("MD Performance: ");
-        printPerformance(mdTime, elapsedWallTime);
-        (*totalMDTime) += mdTime;
-        (*totalWallTimeInMD) += elapsedWallTime;
 
         // set up for the next round
         // Run clustering with a strude of 1
@@ -138,7 +157,9 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
             int totalNumFrames = 0;
             MPI::COMM_WORLD.Allreduce(&numFrames, &totalNumFrames, 1, MPI_INT, MPI_SUM);
             numClusters = (int) (totalNumFrames * opts.kcentersNumClusterMultiplier);
-            printfM("Total numFrames=%d. numClusters=%d", totalNumFrames, numClusters);
+            if (numClusters <= 0)
+                numClusters = 1;
+            printfM("\nTotal numFrames=%d. numClusters=%d\n", totalNumFrames, numClusters);
         }
 
         ParallelKCenters clusterer(file, 1, opts.kcentersRmsdIndices);
@@ -161,13 +182,11 @@ void run(int argc, char* argv[], double* totalMDTime, double* totalWallTimeInMD)
 int main(int argc, char* argv[]) {
     MPI::Init(argc, argv);
     const int RANK = MPI::COMM_WORLD.Get_rank();
-    if (RANK == MASTER) {
-        printf("Tungsten: Parallel Markov State Model Acceleraed Molecular Dynamics\n\n");
-        printf("Copyright (C) 2013 Stanford University. This program\n");
-        printf("comes with ABSOLUTELY NO WARRANTY. Tungsten is free\n");
-        printf("software, and you are welcome to redistribute it under\n");
-        printf("certain conditions; see LICENSE.txt for details\n\n");
-    }
+    printfM("Tungsten: Parallel Markov State Model Acceleraed Molecular Dynamics\n\n");
+    printfM("Copyright (C) 2013 Stanford University. This program\n");
+    printfM("comes with ABSOLUTELY NO WARRANTY. Tungsten is free\n");
+    printfM("software, and you are welcome to redistribute it under\n");
+    printfM("certain conditions; see LICENSE.txt for details\n\n");
     double totalMDTime = 0;
     double totalTimeInMD = 0;
     time_t startWallTime = time(NULL);

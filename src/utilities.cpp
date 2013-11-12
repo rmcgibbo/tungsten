@@ -66,18 +66,23 @@ int endswith(const char *str, const char *suffix) {
     return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
 }
 
+int fileExists(const std::string& name) {
+    if (FILE *file = fopen(name.c_str(), "r")) {
+        fclose(file);
+        return 1;
+    } else
+        return 0;
+}
 
 void exitWithMessage(const string& format, ...) {
     const int rank = MPI::COMM_WORLD.Get_rank();
     va_list args;
     va_start(args, format);
     int r;
-    if (rank == MASTER) {
-        fprintf(stderr, "!=======================================================!\n");
-        r = vfprintf(stderr, format.c_str(), args);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "!=======================================================!\n");
-    }
+    fprintf(stderr, "!=======================================================!\n");
+    r = vfprintf(stderr, format.c_str(), args);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "!=======================================================!\n");
     va_end(args);
     fflush(stderr);
     MPI::COMM_WORLD.Abort(EXIT_FAILURE);

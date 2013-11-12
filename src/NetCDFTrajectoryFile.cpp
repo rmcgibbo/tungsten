@@ -77,6 +77,7 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const char* filename,
     } else
         exitWithMessage("NetCDFTrajectoryFile: Only mode='r' and mode='w' are supported");
 
+
     if (!isvalid())
         exitWithMessage("ERROR OPENING FILE Mode=%s\n", mode.c_str());
 
@@ -86,11 +87,10 @@ NetCDFTrajectoryFile::NetCDFTrajectoryFile(const char* filename,
         loadHeaders();
     } else if (mode_.compare("w") == 0 && numDims == 0) {
         initializeHeaders(numAtoms);
-        printfM("\nLoading/Creating output trajectories\n");
-        printfM("------------------------------------\n");
-        printfAOrd("Rank %d: Initializing NetCDF trj %s; currently contains %d frames\n", rank_, filename, getNumFrames());
-    } else
+        printf("Rank %d: Initializing NetCDF trj %s; currently contains %lu frames\n", rank_, filename, getNumFrames());
+    } else {
         exitWithMessage("Malformed AMBER NetCDF trajector file");
+    }
 }
 
 int NetCDFTrajectoryFile::loadHeaders() {
